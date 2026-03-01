@@ -1,0 +1,10 @@
+{
+  "name": "global-syndicate-elite",
+  "private": true,
+  "packageManager": "pnpm@8.15.6",
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "start": "pnpm -r start"
+  }
+}

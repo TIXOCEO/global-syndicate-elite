@@ -1,0 +1,14 @@
+[0;1;32m●[0m fail2ban.service - Fail2Ban Service
+     Loaded: loaded (]8;;file://vps.undercoverbattlebox.nl/usr/lib/systemd/system/fail2ban.service/usr/lib/systemd/system/fail2ban.service]8;;; [0;1;32menabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (running)[0m since Sun 2026-03-01 14:56:26 UTC; 14s ago
+       Docs: ]8;;man:fail2ban(1)man:fail2ban(1)]8;;
+   Main PID: 813762 (fail2ban-server)
+      Tasks: 5 (limit: 9433)
+     Memory: 148.3M (peak: 152.7M)
+        CPU: 347ms
+     CGroup: /system.slice/fail2ban.service
+             └─[0;38;5;245m813762 /usr/bin/python3 /usr/bin/fail2ban-server -xf start[0m
+
+Mar 01 14:56:26 vps.undercoverbattlebox.nl systemd[1]: Started fail2ban.service - Fail2Ban Service.
+Mar 01 14:56:26 vps.undercoverbattlebox.nl fail2ban-server[813762]: 2026-03-01 14:56:26,507 fail2ban.configreader   [813762]: WARNING 'allowipv6' not defined in 'Definition'. Using default one: 'auto'
+Mar 01 14:56:26 vps.undercoverbattlebox.nl fail2ban-server[813762]: Server ready
