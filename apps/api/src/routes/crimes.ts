@@ -25,23 +25,13 @@ export async function crimeRoutes(app: FastifyInstance) {
     { preHandler: app.authenticate },
     async (req: any, reply) => {
 
-      console.log("🔥 CRIME ROUTE HIT");
-
       const { crimeType } = req.body;
-      console.log("Crime type:", crimeType);
-
       const accountId = req.user.accountId;
-      console.log("Account ID:", accountId);
 
       const def = CrimeDefinitions[crimeType as keyof typeof CrimeDefinitions];
-      console.log("Crime definition:", def);
-
       if (!def) {
-        console.log("❌ Invalid crime type");
         return reply.code(400).send({ error: "Invalid crime type" });
       }
-
-      console.log("Fetching character...");
 
       const character = await app.prisma.character.findFirst({
         where: {
@@ -50,60 +40,57 @@ export async function crimeRoutes(app: FastifyInstance) {
         },
         include: {
           energy: true,
-          skills: true
+          skills: true,
+          jail: true
         }
       });
 
-      console.log("Character found:", character?.id);
-
       if (!character) {
-        console.log("❌ No active character");
         return reply.code(404).send({ error: "No active character" });
       }
 
+      if ((character.jail?.jailRemainingSeconds ?? 0) > 0) {
+        return reply.code(403).send({ error: "Character is jailed" });
+      }
+
       const currentEnergy = character.energy?.energy ?? 0;
-      console.log("Current energy:", currentEnergy);
 
       try {
         assertEnergyAvailable(currentEnergy, def.energyCost);
-        console.log("Energy check passed");
       } catch {
-        console.log("❌ Not enough energy");
         return reply.code(400).send({ error: "Not enough energy" });
       }
 
-      console.log("Deducting energy...");
-
       await app.prisma.energy.update({
         where: { characterId: character.id },
-        data: {
-          energy: { decrement: def.energyCost }
-        }
+        data: { energy: { decrement: def.energyCost } }
       });
-
-      console.log("Energy deducted");
 
       const skillValue =
         def.skillFocus === "shooting"
           ? character.skills?.shooting ?? 0
           : character.skills?.smuggling ?? 0;
 
-      console.log("Skill value:", skillValue);
+      // 🔥 HARDER EARLY GAME SUCCESS CURVE
 
       let successChance =
         def.baseSuccessChance +
         0.0025 * skillValue +
         0.015 * (character.tier - 1);
 
+      // Inexperience penalty (stronger than before)
+      const inexperiencePenalty =
+        Math.max(0, 25 - skillValue) * 0.006;
+
+      successChance -= inexperiencePenalty;
+
       if (character.status === "CRITICAL") {
         successChance -= 0.15;
       }
 
-      successChance = Math.min(0.95, Math.max(0.35, successChance));
-      console.log("Success chance:", successChance);
+      successChance = Math.min(0.85, Math.max(0.30, successChance));
 
       const success = Math.random() < successChance;
-      console.log("Success result:", success);
 
       let cashReward = 0;
       let leadReward = 0;
@@ -111,11 +98,17 @@ export async function crimeRoutes(app: FastifyInstance) {
       let smugglingXP = 0;
       let rxpGain = 0;
       let tierUp = false;
+      let hpDamage = 0;
+      let jailed = false;
 
       if (success) {
 
+        const variance = 0.75 + Math.random() * 0.5;
+
         cashReward = Math.round(
-          def.baseCash * (1 + 0.05 * (character.tier - 1))
+          def.baseCash *
+          variance *
+          (1 + 0.05 * (character.tier - 1))
         );
 
         if (Math.random() < def.baseLeadDropChance) {
@@ -127,17 +120,10 @@ export async function crimeRoutes(app: FastifyInstance) {
           leadReward = Math.round(leadReward * 0.6);
         }
 
-        console.log("Applying resource delta:", {
-          cashReward,
-          leadReward
-        });
-
         await applyResourceDelta(app.prisma, character.id, {
           cash: cashReward,
           lead: leadReward
         });
-
-        console.log("Resource delta applied");
 
         if (def.skillFocus === "shooting") {
           shootingXP = computeShootingXP(cashReward);
@@ -147,25 +133,68 @@ export async function crimeRoutes(app: FastifyInstance) {
 
         rxpGain = computeRXP(cashReward);
 
-        console.log("XP Gains:", {
-          shootingXP,
-          smugglingXP,
-          rxpGain
+      } else {
+
+        leadReward = Math.floor(Math.random() * 5) + 2;
+
+        hpDamage = Math.floor(Math.random() * 9) + 6 + character.tier;
+
+        await applyResourceDelta(app.prisma, character.id, {
+          lead: leadReward
         });
+
+        const newHP = Math.max(0, character.hp - hpDamage);
+
+        let newStatus = character.status;
+
+        if (newHP <= 150 && newHP > 0) {
+          newStatus = "CRITICAL";
+        }
+
+        if (newHP === 0) {
+          newStatus = "DEAD";
+        }
+
+        await app.prisma.character.update({
+          where: { id: character.id },
+          data: {
+            hp: newHP,
+            status: newStatus
+          }
+        });
+
+        const base = 0.50;
+        const leadFactor = character.lead / 100;
+        const skillReduction = skillValue * 0.002;
+        const tierReduction = (character.tier - 1) * 0.01;
+
+        let arrestChance =
+          base + leadFactor - skillReduction - tierReduction;
+
+        arrestChance = Math.min(0.75, Math.max(0.50, arrestChance));
+
+        if (Math.random() < arrestChance) {
+          jailed = true;
+
+          const jailTime = 120 + Math.floor(Math.random() * 180);
+
+          await app.prisma.jailState.update({
+            where: { characterId: character.id },
+            data: {
+              jailRemainingSeconds: jailTime,
+              lastUpdatedAt: new Date()
+            }
+          });
+        }
       }
 
-      console.log("Starting transaction...");
-
       await app.prisma.$transaction(async (tx) => {
-
-        console.log("Inside transaction");
 
         if (shootingXP > 0) {
           await tx.skills.update({
             where: { characterId: character.id },
             data: { shooting: { increment: shootingXP } }
           });
-          console.log("Shooting XP updated");
         }
 
         if (smugglingXP > 0) {
@@ -173,7 +202,6 @@ export async function crimeRoutes(app: FastifyInstance) {
             where: { characterId: character.id },
             data: { smuggling: { increment: smugglingXP } }
           });
-          console.log("Smuggling XP updated");
         }
 
         if (rxpGain > 0) {
@@ -196,8 +224,6 @@ export async function crimeRoutes(app: FastifyInstance) {
               tier: newTier
             }
           });
-
-          console.log("Character progression updated");
         }
 
         await tx.crimeLog.create({
@@ -210,11 +236,7 @@ export async function crimeRoutes(app: FastifyInstance) {
             energyConsumed: def.energyCost
           }
         });
-
-        console.log("Crime log created");
       });
-
-      console.log("Transaction completed");
 
       return {
         success,
@@ -223,7 +245,9 @@ export async function crimeRoutes(app: FastifyInstance) {
         shootingXP,
         smugglingXP,
         rxpGain,
-        tierUp
+        tierUp,
+        hpDamage,
+        jailed
       };
     }
   );
