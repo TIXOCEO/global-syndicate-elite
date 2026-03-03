@@ -41,7 +41,8 @@ export async function crimeRoutes(app: FastifyInstance) {
         include: {
           energy: true,
           skills: true,
-          jail: true
+          jail: true,
+          cooldown: true
         }
       });
 
@@ -51,6 +52,28 @@ export async function crimeRoutes(app: FastifyInstance) {
 
       if ((character.jail?.jailRemainingSeconds ?? 0) > 0) {
         return reply.code(403).send({ error: "Character is jailed" });
+      }
+
+      // GLOBAL COOLDOWN
+      if (character.cooldown) {
+        const lastUsed = new Date(character.cooldown.lastUsedAt).getTime();
+        const lastCrimeType = character.cooldown.crimeType;
+        const lastDef =
+          CrimeDefinitions[lastCrimeType as keyof typeof CrimeDefinitions];
+
+        if (lastDef) {
+          const cooldownSeconds = lastDef.cooldownSeconds;
+          const secondsSince = (Date.now() - lastUsed) / 1000;
+
+          if (secondsSince < cooldownSeconds) {
+            return reply.code(429).send({
+              error: "Crime on cooldown",
+              cooldownRemainingSeconds: Math.ceil(
+                cooldownSeconds - secondsSince
+              )
+            });
+          }
+        }
       }
 
       const currentEnergy = character.energy?.energy ?? 0;
@@ -71,14 +94,11 @@ export async function crimeRoutes(app: FastifyInstance) {
           ? character.skills?.shooting ?? 0
           : character.skills?.smuggling ?? 0;
 
-      // 🔥 HARDER EARLY GAME SUCCESS CURVE
-
       let successChance =
         def.baseSuccessChance +
         0.0025 * skillValue +
         0.015 * (character.tier - 1);
 
-      // Inexperience penalty (stronger than before)
       const inexperiencePenalty =
         Math.max(0, 25 - skillValue) * 0.006;
 
@@ -136,7 +156,6 @@ export async function crimeRoutes(app: FastifyInstance) {
       } else {
 
         leadReward = Math.floor(Math.random() * 5) + 2;
-
         hpDamage = Math.floor(Math.random() * 9) + 6 + character.tier;
 
         await applyResourceDelta(app.prisma, character.id, {
@@ -147,36 +166,27 @@ export async function crimeRoutes(app: FastifyInstance) {
 
         let newStatus = character.status;
 
-        if (newHP <= 150 && newHP > 0) {
-          newStatus = "CRITICAL";
-        }
-
-        if (newHP === 0) {
-          newStatus = "DEAD";
-        }
+        if (newHP <= 150 && newHP > 0) newStatus = "CRITICAL";
+        if (newHP === 0) newStatus = "DEAD";
 
         await app.prisma.character.update({
           where: { id: character.id },
-          data: {
-            hp: newHP,
-            status: newStatus
-          }
+          data: { hp: newHP, status: newStatus }
         });
 
-        const base = 0.50;
-        const leadFactor = character.lead / 100;
-        const skillReduction = skillValue * 0.002;
-        const tierReduction = (character.tier - 1) * 0.01;
+        // 🔥 NEW BALANCED JAIL FORMULA
+        const baseJail = def.cooldownSeconds;
+        const tierFactor = character.tier * 5;
 
-        let arrestChance =
-          base + leadFactor - skillReduction - tierReduction;
+        const jailTime =
+          Math.floor(baseJail * 0.5) +
+          Math.floor(Math.random() * baseJail) +
+          tierFactor;
 
-        arrestChance = Math.min(0.75, Math.max(0.50, arrestChance));
+        const arrestChance = 0.5;
 
         if (Math.random() < arrestChance) {
           jailed = true;
-
-          const jailTime = 120 + Math.floor(Math.random() * 180);
 
           await app.prisma.jailState.update({
             where: { characterId: character.id },
@@ -219,10 +229,7 @@ export async function crimeRoutes(app: FastifyInstance) {
 
           await tx.character.update({
             where: { id: character.id },
-            data: {
-              rxp: newRXP,
-              tier: newTier
-            }
+            data: { rxp: newRXP, tier: newTier }
           });
         }
 
@@ -236,6 +243,16 @@ export async function crimeRoutes(app: FastifyInstance) {
             energyConsumed: def.energyCost
           }
         });
+      });
+
+      await app.prisma.crimeCooldown.upsert({
+        where: { characterId: character.id },
+        update: { crimeType, lastUsedAt: new Date() },
+        create: {
+          characterId: character.id,
+          crimeType,
+          lastUsedAt: new Date()
+        }
       });
 
       return {

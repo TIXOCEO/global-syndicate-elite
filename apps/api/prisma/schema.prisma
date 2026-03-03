@@ -59,6 +59,7 @@ model Character {
   skills          Skills?
   energy          Energy?
   jail            JailState?
+  cooldown        CrimeCooldown?
 
   crimeLogs       CrimeLog[]
 
@@ -101,6 +102,15 @@ model CrimeLog {
   leadGranted       Int
   energyConsumed    Int
   createdAt         DateTime @default(now())
+
+  @@index([characterId])
+}
+
+model CrimeCooldown {
+  characterId String @id
+  character   Character @relation(fields: [characterId], references: [id])
+  crimeType   String
+  lastUsedAt  DateTime
 
   @@index([characterId])
 }

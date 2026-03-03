@@ -14,45 +14,24 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not defined");
 }
 
-console.log("Worker using DATABASE_URL:", process.env.DATABASE_URL);
-
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
 
 const adapter = new PrismaPg(pool);
-
-const prisma = new PrismaClient({
-  adapter
-});
+const prisma = new PrismaClient({ adapter });
 
 async function energyRegenTick() {
   const now = new Date();
 
   try {
-    const energies = await prisma.energy.findMany({
-      include: {
-        character: {
-          select: { status: true }
-        }
-      }
-    });
-
-    console.log("Energy rows found:", energies.length);
+    const energies = await prisma.energy.findMany();
 
     for (const entry of energies) {
-      const last = new Date(entry.lastRegenAt);
 
+      const last = new Date(entry.lastRegenAt);
       const secondsElapsed =
         Math.floor((now.getTime() - last.getTime()) / 1000);
-
-      console.log("Energy Debug:", {
-        characterId: entry.characterId,
-        now: now.toISOString(),
-        lastRegenAt: last.toISOString(),
-        secondsElapsed,
-        currentEnergy: entry.energy
-      });
 
       if (secondsElapsed < 60) continue;
 
@@ -60,12 +39,6 @@ async function energyRegenTick() {
       if (regenAmount <= 0) continue;
 
       const newEnergy = Math.min(100, entry.energy + regenAmount);
-
-      console.log("Applying Regen:", {
-        characterId: entry.characterId,
-        regenAmount,
-        newEnergy
-      });
 
       await prisma.energy.update({
         where: { characterId: entry.characterId },
@@ -78,9 +51,38 @@ async function energyRegenTick() {
       });
     }
 
-    console.log("[worker] energy tick completed", now.toISOString());
   } catch (err) {
     console.error("[worker] energy tick error", err);
+  }
+}
+
+async function jailTick() {
+  const now = new Date();
+
+  const jailed = await prisma.jailState.findMany({
+    where: {
+      jailRemainingSeconds: { gt: 0 }
+    }
+  });
+
+  for (const entry of jailed) {
+
+    const last = new Date(entry.lastUpdatedAt);
+    const secondsElapsed =
+      Math.floor((now.getTime() - last.getTime()) / 1000);
+
+    if (secondsElapsed <= 0) continue;
+
+    const newRemaining =
+      Math.max(0, entry.jailRemainingSeconds - secondsElapsed);
+
+    await prisma.jailState.update({
+      where: { characterId: entry.characterId },
+      data: {
+        jailRemainingSeconds: newRemaining,
+        lastUpdatedAt: now
+      }
+    });
   }
 }
 
@@ -89,9 +91,10 @@ async function start() {
 
   setInterval(async () => {
     await energyRegenTick();
+    await jailTick();
   }, 60_000);
 
-  console.log("EnergyRegenWorker active");
+  console.log("Worker active (energy + jail)");
 }
 
 start();
@@ -102,7 +105,6 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({ status: "ok", service: "worker" }));
     return;
   }
-
   res.writeHead(404);
   res.end();
 });
