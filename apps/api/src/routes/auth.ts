@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
-import { hashPassword, verifyPassword } from "@gse/auth/hash";
-import { signAccess, signRefresh } from "@gse/auth/jwt";
-import { generateReferralCode } from "@gse/auth/referral";
+import { hashPassword, verifyPassword } from "../lib/hash";
+import { signAccess, signRefresh } from "../lib/jwt";
+import { generateReferralCode } from "../lib/referral";
 
 export async function authRoutes(app: FastifyInstance) {
 
@@ -13,22 +13,36 @@ export async function authRoutes(app: FastifyInstance) {
     });
 
     if (existing) {
-      return reply.code(400).send({ error: "Email already used" });
+      return reply.code(400).send({ error: "Email already registered" });
+    }
+
+    let referredByCode: string | null = null;
+
+    if (referralCode) {
+      const refAccount = await app.prisma.account.findUnique({
+        where: { referralCode }
+      });
+
+      if (!refAccount) {
+        return reply.code(400).send({ error: "Invalid referral code" });
+      }
+
+      referredByCode = referralCode;
     }
 
     const passwordHash = await hashPassword(password);
 
-    const newAccount = await app.prisma.account.create({
+    const account = await app.prisma.account.create({
       data: {
         email,
         passwordHash,
         referralCode: generateReferralCode(),
-        referredByCode: referralCode ?? null
+        referredByCode
       }
     });
 
-    const access = signAccess({ accountId: newAccount.id });
-    const refresh = signRefresh({ accountId: newAccount.id });
+    const access = signAccess({ accountId: account.id });
+    const refresh = signRefresh({ accountId: account.id });
 
     return { access, refresh };
   });
@@ -48,6 +62,10 @@ export async function authRoutes(app: FastifyInstance) {
 
     if (!valid) {
       return reply.code(400).send({ error: "Invalid credentials" });
+    }
+
+    if (account.status === "BANNED") {
+      return reply.code(403).send({ error: "Account banned" });
     }
 
     const access = signAccess({ accountId: account.id });

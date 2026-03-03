@@ -1,3 +1,4 @@
+import "dotenv/config";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
@@ -9,6 +10,8 @@ import authPlugin from "./plugins/auth";
 import { authRoutes } from "./routes/auth";
 import { accountRoutes } from "./routes/account";
 import { characterRoutes } from "./routes/character";
+import { resourceRoutes } from "./routes/resources";
+import { crimeRoutes } from "./routes/crimes";
 
 const app = Fastify({ logger: true });
 
@@ -20,6 +23,7 @@ async function bootstrap() {
 
   await app.register(cookie);
 
+  // 🔒 REQUIRE EXPLICIT SECRET
   await app.register(jwt, {
     secret: process.env.JWT_ACCESS_SECRET!
   });
@@ -30,10 +34,19 @@ async function bootstrap() {
   await app.register(authRoutes, { prefix: "/auth" });
   await app.register(accountRoutes);
   await app.register(characterRoutes);
+  await app.register(resourceRoutes);
+  await app.register(crimeRoutes);
 
   app.get("/health", async () => ({ status: "ok" }));
 
-  await app.listen({ port: 4000, host: "0.0.0.0" });
+  const port = Number(process.env.PORT) || 5001;
+
+  await app.listen({
+    port,
+    host: "0.0.0.0"
+  });
+
+  app.log.info(`GSE API running on port ${port}`);
 }
 
 bootstrap();

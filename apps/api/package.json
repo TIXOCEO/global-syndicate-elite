@@ -15,16 +15,19 @@
     "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.2.0",
     "@fastify/jwt": "^10.0.0",
+    "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "7.4.2",
     "argon2": "^0.44.0",
     "dotenv": "^17.3.1",
     "fastify": "^5.7.4",
     "fastify-plugin": "^5.1.0",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.19.0"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
+    "@types/pg": "^8.18.0",
     "prisma": "7.4.2",
     "tsx": "^4.21.0",
     "typescript": "^5"

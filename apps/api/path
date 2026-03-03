@@ -1,0 +1,555 @@
+Script started on 2026-03-03 19:16:28+00:00 [TERM="xterm-256color" TTY="/dev/pts/0" COLUMNS="74" LINES="25"]
+[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [7mcat dist/index.js | grep crimes[27mcat dist/index.js | grep crimes
+[?2004lconst [01;31m[Kcrimes[m[K_1 = require("./routes/[01;31m[Kcrimes[m[K"); // ✅ ADDED
+app.register([01;31m[Kcrimes[m[K_1.crimeRoutes); // ✅ ADDED
+[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [7mcat src/server.ts[27mcat src/server.ts
+[?2004limport "dotenv/config";
+
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
+import jwt from "@fastify/jwt";
+
+import prismaPlugin from "./plugins/prisma";
+import authPlugin from "./plugins/auth";
+
+import { authRoutes } from "./routes/auth";
+import { accountRoutes } from "./routes/account";
+import { characterRoutes } from "./routes/character";
+
+const app = Fastify({ logger: true });
+
+async function bootstrap() {
+  await app.register(cors, {
+    origin: true,
+    credentials: true
+  });
+
+  await app.register(cookie);
+
+  await app.register(jwt, {
+    secret: process.env.JWT_ACCESS_SECRET || "dev-secret"
+  });
+
+  await app.register(prismaPlugin);
+  await app.register(authPlugin);
+
+  await app.register(authRoutes, { prefix: "/auth" });
+  await app.register(accountRoutes);
+  await app.register(characterRoutes);
+
+  app.get("/health", async () => ({ status: "ok" }));
+
+  const port = Number(process.env.PORT) || 5001;
+
+  await app.listen({
+    port,
+    host: "0.0.0.0"
+  });
+
+  app.log.info(`GSE API running on port ${port}`);
+}
+
+bootstrap();
+[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ cd ../ 
+[?2004l[?2004h]0;deploy@vps: /var/www/gse/apps[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps[00m$ cd ../ 
+[?2004l[?2004h]0;deploy@vps: /var/www/gse[01;32mdeploy@vps[00m:[01;34m/var/www/gse[00m$ [K]0;deploy@vps: /var/www/gse[01;32mdeploy@vps[00m:[01;34m/var/www/gse[00m$ [K]0;deploy@vps: /var/www/gse[01;32mdeploy@vps[00m:[01;34m/var/www/gse[00m$ rm [7mapps/api/src/server.ts[27mapps/api/src/server.ts
+[?2004l[?2004h]0;deploy@vps: /var/www/gse[01;32mdeploy@vps[00m:[01;34m/var/www/gse[00m$ nano [7mapps/api/src/server.ts[27mapps/api/src/server.ts
+[?2004l[?2004h[?1049h[22;0;0t[1;25r(B[m[4l[?7h[39;49m[?1h=[?1h=[?25l[39;49m(B[m[H[2J[23;32H(B[0;7m[ New File ](B[m[H(B[0;7m  GNU nano 7.2              apps/api/src/server.ts                        [1;73H(B[m[24d(B[0;7m^G(B[m Help[15G(B[0;7m^O(B[m Write Out  (B[0;7m^W(B[m Where Is   (B[0;7m^K(B[m Cut[24;57H(B[0;7m^T(B[m Execute[25d(B[0;7m^X(B[m Exit[15G(B[0;7m^R(B[m Read File  (B[0;7m^\(B[m Replace    (B[0;7m^U(B[m Paste[57G(B[0;7m^J(B[m Justify[2d[?12l[?25h[25;1H[?1049l[23;0;0t[?1l>[?1049h[22;0;0t[1;50r[?12l[?25h[39;49m]104(B[m[4l[?7h[H[2J[?2004h[?1h=[?1h=(B[0;7m  GNU nano 7.2              apps/api/src/server.ts                        [1;73H(B[m[49d(B[0;7m^G(B[m Help[15G(B[0;7m^O(B[m Write Out  (B[0;7m^W(B[m Where Is   (B[0;7m^K(B[m Cut[49;57H(B[0;7m^T(B[m Execute[50d(B[0;7m^X(B[m Exit[15G(B[0;7m^R(B[m Read File  (B[0;7m^\(B[m Replace    (B[0;7m^U(B[m Paste[57G(B[0;7m^J(B[m Justify[?25l[?12l[?25h[2d[?25l[?12l[?25h[50;1H[?1049l[23;0;0t[?1l>[?1049h[22;0;0t[1;25r[?12l[?25h[39;49m]104(B[m[4l[?7h[H[2J(B[0;7m  GNU nano 7.2              apps/api/src/server.ts                        [1;1H(B[m[?2004h[?1h=[?1h=[73G[24d(B[0;7m^G(B[m Help[15G(B[0;7m^O(B[m Write Out  (B[0;7m^W(B[m Where Is   (B[0;7m^K(B[m Cut[24;57H(B[0;7m^T(B[m Execute[25d(B[0;7m^X(B[m Exit[15G(B[0;7m^R(B[m Read File  (B[0;7m^\(B[m Replace    (B[0;7m^U(B[m Paste[57G(B[0;7m^J(B[m Justify[?25l[?12l[?25h[2d[?25l[?12l[?25h[?25l[1;52H(B[0;7m*[73G(B[m[2;3Hconst port = Number(process.env.PORT) || 5001;[4;3Hawait app.listen({[5;5Hport,[6;5Hhost: "0.0.0.0"[7;3H});[9;3Happ.log.info(`GSE API running on port ${port}`);[10d}[12dbootstrap();[?12l[?25h[?25l[23d(B[0;7mSave modified buffer?                                                     [24;1H Y(B[m Yes[K[25d(B[0;7m N(B[m No  [15G  (B[0;7m^C(B[m Cancel[K[23;23H[?12l[?25h[?25l[24d(B[0;7m^G(B[m Help[24;19H(B[0;7mM-D(B[m DOS Format    (B[0;7mM-A(B[m Append[24;55H(B[0;7mM-B(B[m Backup File[25d(B[0;7m^C(B[m Cancel[17G  (B[0;7mM-M(B[m Mac Format    (B[0;7mM-P(B[m Prepend[55G(B[0;7m^T(B[m Browse[23d(B[0;7mFile Name to Write: apps/api/src/server.ts(B[m[?12l[?25h[?25l[23;30H[1K (B[0;7m[ Writing... ](B[m[K[1;52H(B[0;7m [73G(B[m[23;29H(B[0;7m[ Wrote 51 lines ](B[m[J[25d[?12l[?25h[25;1H[?1049l[23;0;0t[?1l>[?2004l[?2004h]0;deploy@vps: /var/www/gse[01;32mdeploy@vps[00m:[01;34m/var/www/gse[00m$ [K]0;deploy@vps: /var/www/gse[01;32mdeploy@vps[00m:[01;34m/var/www/gse[00m$ [K]0;deploy@vps: /var/www/gse[01;32mdeploy@vps[00m:[01;34m/var/www/gse[00m$ [7mcd /var/www/gse/apps/api[27m
+[7mrm -rf dist[27m
+[7mpnpm build[27m
+[7mpm2 delete gse-api[27m
+[7mpm2 start dist/server.js --name gse-api[27m
+[7mpm2 logs gse-api[27m[A[A[A[A[A]0;deploy@vps: /var/www/gse[01;32mdeploy@vps[00m:[01;34m/var/www/gse[00m$ cd /var/www/gse/apps/api
+rm -rf dist
+pnpm build
+pm2 delete gse-api
+pm2 start dist/server.js --name gse-api
+pm2 logs gse-api
+[?2004l
+> api@1.0.0 build /var/www/gse/apps/api
+> tsc
+
+[96msrc/routes/crimes.ts[0m:[93m2[0m:[93m34[0m - [91merror[0m[90m TS2307: [0mCannot find module '../game/crimeDefinitions' or its corresponding type declarations.
+
+[7m2[0m import { CrimeDefinitions } from "../game/crimeDefinitions";
+[7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+Found 1 error in src/routes/crimes.ts[90m:2[0m
+
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed with exit code 2.[39m
+[32m[PM2] [39mApplying action deleteProcessId on app [gse-api](ids: [ 1 ])
+[32m[PM2] [39m[gse-api](1) ✓
+[90m┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐[39m
+[90m│[39m[1m[36m id [39m[22m[90m│[39m[1m[36m name               [39m[22m[90m│[39m[1m[36m mode     [39m[22m[90m│[39m[1m[36m ↺    [39m[22m[90m│[39m[1m[36m status    [39m[22m[90m│[39m[1m[36m cpu      [39m[22m[90m│[39m[1m[36m memory   [39m[22m[90m│[39m
+[90m├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤[39m
+[90m│[39m[1m[36m [1m[36m0[39m[36m[22m[1m  [39m[22m[90m│[39m gse-web            [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 6    [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 80.9mb   [90m│[39m
+[90m│[39m[1m[36m [1m[36m4[39m[36m[22m[1m  [39m[22m[90m│[39m gse-worker         [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 30   [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 152.7mb  [90m│[39m
+[90m│[39m[1m[36m [1m[36m2[39m[36m[22m[1m  [39m[22m[90m│[39m gse-ws             [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 6    [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 61.7mb   [90m│[39m
+[90m└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘[39m
+[32m[PM2] [39mStarting /var/www/gse/apps/api/dist/server.js in fork_mode (1 instance)
+[32m[PM2] [39mDone.
+[90m┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐[39m
+[90m│[39m[1m[36m id [39m[22m[90m│[39m[1m[36m name               [39m[22m[90m│[39m[1m[36m mode     [39m[22m[90m│[39m[1m[36m ↺    [39m[22m[90m│[39m[1m[36m status    [39m[22m[90m│[39m[1m[36m cpu      [39m[22m[90m│[39m[1m[36m memory   [39m[22m[90m│[39m
+[90m├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤[39m
+[90m│[39m[1m[36m [1m[36m5[39m[36m[22m[1m  [39m[22m[90m│[39m gse-api            [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 0    [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 17.9mb   [90m│[39m
+[90m│[39m[1m[36m [1m[36m0[39m[36m[22m[1m  [39m[22m[90m│[39m gse-web            [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 6    [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 80.9mb   [90m│[39m
+[90m│[39m[1m[36m [1m[36m4[39m[36m[22m[1m  [39m[22m[90m│[39m gse-worker         [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 30   [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 152.7mb  [90m│[39m
+[90m│[39m[1m[36m [1m[36m2[39m[36m[22m[1m  [39m[22m[90m│[39m gse-ws             [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 6    [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 61.7mb   [90m│[39m
+[90m└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘[39m
+[1m[90m[TAILING] Tailing last 15 lines for [gse-api] process (change the value with --lines option)[39m[22m
+[90m/home/deploy/.pm2/logs/gse-api-out.log last 15 lines:[39m
+[90m/home/deploy/.pm2/logs/gse-api-error.log last 15 lines:[39m
+[31m5|gse-api  | [39m```
+[31m5|gse-api  | [39mconstructor() {
+[31m5|gse-api  | [39m  super({ ... });
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39m```
+[31m5|gse-api  | [39m          
+[31m5|gse-api  | [39m    at new t (/var/www/gse/node_modules/.pnpm/@prisma+client@7.4.2_prisma@7.4.2_typescript@5.9.3/node_modules/@prisma/client/runtime/client.js:70:960)
+[31m5|gse-api  | [39m    at /var/www/gse/apps/api/dist/plugins/prisma.js:9:20
+[31m5|gse-api  | [39m    at Plugin.exec (/var/www/gse/node_modules/.pnpm/avvio@9.2.0/node_modules/avvio/lib/plugin.js:125:28)
+[31m5|gse-api  | [39m    at Boot._loadPlugin (/var/www/gse/node_modules/.pnpm/avvio@9.2.0/node_modules/avvio/boot.js:446:10)
+[31m5|gse-api  | [39m    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+[31m5|gse-api  | [39m  clientVersion: '7.4.2',
+[31m5|gse-api  | [39m  errorCode: undefined,
+[31m5|gse-api  | [39m  retryable: undefined
+[31m5|gse-api  | [39m}
+
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+[31m5|gse-api  | [39mError: Cannot find module '../game/crimeDefinitions'
+[31m5|gse-api  | [39mRequire stack:
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/routes/crimes.js
+[31m5|gse-api  | [39m- /var/www/gse/apps/api/dist/server.js
+[31m5|gse-api  | [39m    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m5|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m5|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m5|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m5|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m5|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m5|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m5|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m5|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m5|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m5|gse-api  | [39m  requireStack: [
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m5|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m5|gse-api  | [39m  ]
+[31m5|gse-api  | [39m}
+^C
+[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [7mls src/game[27mls src/game
+[?2004lls: cannot access 'src/game': No such file or directory
+[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ ls
+[?2004l[0m[01;34mdist[0m          package.json  [01;34mprisma[0m            [01;34msrc[0m
+[01;34mnode_modules[0m  path          prisma.config.ts  tsconfig.json
+[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ ls c[Ksrc
+[?2004lindex.ts  [0m[01;34mlib[0m  [01;34mplugins[0m  [01;34mroutes[0m  server.ts  [01;34mtypes[0m
+[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ ls[K[K[K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [7mmkdir -p src/game[27m
+[7mnano src/game/crimeDefinitions.ts[27m[A]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ mkdir -p src/game
+nano src/game/crimeDefinitions.ts
+[?2004l[?2004h[?1049h[22;0;0t[1;25r(B[m[4l[?7h[39;49m[?1h=[?1h=[?25l[39;49m(B[m[H[2J[23;32H(B[0;7m[ New File ](B[m[H(B[0;7m  GNU nano 7.2           src/game/crimeDefinitions.ts                     [1;73H(B[m[24d(B[0;7m^G(B[m Help[15G(B[0;7m^O(B[m Write Out  (B[0;7m^W(B[m Where Is   (B[0;7m^K(B[m Cut[24;57H(B[0;7m^T(B[m Execute[25d(B[0;7m^X(B[m Exit[15G(B[0;7m^R(B[m Read File  (B[0;7m^\(B[m Replace    (B[0;7m^U(B[m Paste[57G(B[0;7m^J(B[m Justify[2d[?12l[?25h[25;1H[?1049l[23;0;0t[?1l>[?1049h[22;0;0t[1;50r[?12l[?25h[39;49m]104(B[m[4l[?7h[H[2J[?2004h[?1h=[?1h=(B[0;7m  GNU nano 7.2           src/game/crimeDefinitions.ts                     [1;73H(B[m[49d(B[0;7m^G(B[m Help[15G(B[0;7m^O(B[m Write Out  (B[0;7m^W(B[m Where Is   (B[0;7m^K(B[m Cut[49;57H(B[0;7m^T(B[m Execute[50d(B[0;7m^X(B[m Exit[15G(B[0;7m^R(B[m Read File  (B[0;7m^\(B[m Replace    (B[0;7m^U(B[m Paste[57G(B[0;7m^J(B[m Justify[?25l[?12l[?25h[2d[?25l[?12l[?25h[50;1H[?1049l[23;0;0t[?1l>[?1049h[22;0;0t[1;25r[?12l[?25h[39;49m]104(B[m[4l[?7h[H[2J(B[0;7m  GNU nano 7.2           src/game/crimeDefinitions.ts                     [1;1H(B[m[?2004h[?1h=[?1h=[73G[24d(B[0;7m^G(B[m Help[15G(B[0;7m^O(B[m Write Out  (B[0;7m^W(B[m Where Is   (B[0;7m^K(B[m Cut[24;57H(B[0;7m^T(B[m Execute[25d(B[0;7m^X(B[m Exit[15G(B[0;7m^R(B[m Read File  (B[0;7m^\(B[m Replace    (B[0;7m^U(B[m Paste[57G(B[0;7m^J(B[m Justify[?25l[?12l[?25h[2d[?25l[?12l[?25h[?25l[1;55H(B[0;7m*[73G(B[m[2dmkdir -p src/game[3dnano src/game/crimeDefinitions.ts[?12l[?25h[?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h[?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h[K[?25l[2;18H[?12l[?25h[?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h[?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h[?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h [?25l[?12l[?25h[K[25;1H[?1049l[23;0;0t[?1l>[?1049h[22;0;0t[1;50r[?12l[?25h[39;49m]104(B[m[4l[?7h[H[2J(B[0;7m  GNU nano 7.2           src/game/crimeDefinitions.ts *                   [24;1H^G(B[m Help[15G(B[0;7m^O(B[m Write Out  (B[0;7m^W(B[m Where Is   (B[0;7m^K(B[m Cut[24;57H(B[0;7m^T(B[m Execute[25d(B[0;7m^X(B[m Exit[15G(B[0;7m^R(B[m Read File  (B[0;7m^\(B[m Replace    (B[0;7m^U(B[m Paste[57G(B[0;7m^J(B[m Justify[H[?2004h[?1h=[?1h=[73G[2d[25L[50;67H[?25l[?12l[?25h[2d[?25l[?12l[?25h[50;1H[?1049l[23;0;0t[?1l>[?1049h[22;0;0t[1;25r[?12l[?25h[39;49m]104(B[m[4l[?7h[H[2J(B[0;7m  GNU nano 7.2           src/game/crimeDefinitions.ts *                   [1;1H(B[m[?2004h[?1h=[?1h=[73G[24d(B[0;7m^G(B[m Help[15G(B[0;7m^O(B[m Write Out  (B[0;7m^W(B[m Where Is   (B[0;7m^K(B[m Cut[24;57H(B[0;7m^T(B[m Execute[25d(B[0;7m^X(B[m Exit[15G(B[0;7m^R(B[m Read File  (B[0;7m^\(B[m Replace    (B[0;7m^U(B[m Paste[57G(B[0;7m^J(B[m Justify[?25l[?12l[?25h[2d[?25l[?12l[?25h[?25l    baseSuccessChance: 0.65,[3;5HskillFocus: "smuggling"[4;3H},[5dWAREHOUSE_RAID: {[6;5HenergyCost: 25,[7;5HbaseCash: 400,[8;5HbaseLeadDropChance: 0.45,[9;5HbaseSuccessChance: 0.55,[10;5HskillFocus: "shooting"[11;3H}[12d} as const;[?12l[?25h[?25l[23d(B[0;7mSave modified buffer?                                                     [24;1H Y(B[m Yes[K[25d(B[0;7m N(B[m No  [15G  (B[0;7m^C(B[m Cancel[K[23;23H[?12l[?25h[?25l[24d(B[0;7m^G(B[m Help[24;19H(B[0;7mM-D(B[m DOS Format    (B[0;7mM-A(B[m Append[24;55H(B[0;7mM-B(B[m Backup File[25d(B[0;7m^C(B[m Cancel[17G  (B[0;7mM-M(B[m Mac Format    (B[0;7mM-P(B[m Prepend[55G(B[0;7m^T(B[m Browse[23d(B[0;7mFile Name to Write: src/game/crimeDefinitions.ts(B[m[?12l[?25h[?25l[23;30H[1K (B[0;7m[ Writing... ](B[m[K[1;55H(B[0;7m [73G(B[m[23;29H(B[0;7m[ Wrote 23 lines ](B[m[J[25d[?12l[?25h[25;1H[?1049l[23;0;0t[?1l>[?2004l[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [7mrm -rf dist[27m
+[7mpnpm build[27m[A]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ rm -rf dist
+pnpm build
+[?2004l
+> api@1.0.0 build /var/www/gse/apps/api
+> tsc
+
+[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [7mls dist/game[27mls dist/game
+[?2004lcrimeDefinitions.js
+[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [7mpm2 delete gse-api[27m
+[7mpm2 start dist/server.js --name gse-api[27m
+[7mpm2 logs gse-api[27m[A[A]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ pm2 delete gse-api
+pm2 start dist/server.js --name gse-api
+pm2 logs gse-api
+[?2004l[32m[PM2] [39mApplying action deleteProcessId on app [gse-api](ids: [ 5 ])
+[32m[PM2] [39m[gse-api](5) ✓
+[90m┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐[39m
+[90m│[39m[1m[36m id [39m[22m[90m│[39m[1m[36m name               [39m[22m[90m│[39m[1m[36m mode     [39m[22m[90m│[39m[1m[36m ↺    [39m[22m[90m│[39m[1m[36m status    [39m[22m[90m│[39m[1m[36m cpu      [39m[22m[90m│[39m[1m[36m memory   [39m[22m[90m│[39m
+[90m├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤[39m
+[90m│[39m[1m[36m [1m[36m0[39m[36m[22m[1m  [39m[22m[90m│[39m gse-web            [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 6    [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 81.7mb   [90m│[39m
+[90m│[39m[1m[36m [1m[36m4[39m[36m[22m[1m  [39m[22m[90m│[39m gse-worker         [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 30   [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 152.8mb  [90m│[39m
+[90m│[39m[1m[36m [1m[36m2[39m[36m[22m[1m  [39m[22m[90m│[39m gse-ws             [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 6    [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 62.1mb   [90m│[39m
+[90m└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘[39m
+[32m[PM2] [39mStarting /var/www/gse/apps/api/dist/server.js in fork_mode (1 instance)
+[32m[PM2] [39mDone.
+[90m┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐[39m
+[90m│[39m[1m[36m id [39m[22m[90m│[39m[1m[36m name               [39m[22m[90m│[39m[1m[36m mode     [39m[22m[90m│[39m[1m[36m ↺    [39m[22m[90m│[39m[1m[36m status    [39m[22m[90m│[39m[1m[36m cpu      [39m[22m[90m│[39m[1m[36m memory   [39m[22m[90m│[39m
+[90m├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤[39m
+[90m│[39m[1m[36m [1m[36m6[39m[36m[22m[1m  [39m[22m[90m│[39m gse-api            [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 0    [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 13.0mb   [90m│[39m
+[90m│[39m[1m[36m [1m[36m0[39m[36m[22m[1m  [39m[22m[90m│[39m gse-web            [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 6    [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 81.7mb   [90m│[39m
+[90m│[39m[1m[36m [1m[36m4[39m[36m[22m[1m  [39m[22m[90m│[39m gse-worker         [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 30   [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 152.8mb  [90m│[39m
+[90m│[39m[1m[36m [1m[36m2[39m[36m[22m[1m  [39m[22m[90m│[39m gse-ws             [90m│[39m [7m[1mfork[22m[27m     [90m│[39m 6    [90m│[39m [32m[1monline[22m[39m    [90m│[39m 0%       [90m│[39m 61.5mb   [90m│[39m
+[90m└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘[39m
+[1m[90m[TAILING] Tailing last 15 lines for [gse-api] process (change the value with --lines option)[39m[22m
+[90m/home/deploy/.pm2/logs/gse-api-out.log last 15 lines:[39m
+[90m/home/deploy/.pm2/logs/gse-api-error.log last 15 lines:[39m
+[31m6|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:81:25)
+[31m6|gse-api  | [39m    at require (node:internal/modules/helpers:182:18)
+[31m6|gse-api  | [39m    at Object.<anonymous> (/var/www/gse/apps/api/dist/routes/crimes.js:4:28)
+[31m6|gse-api  | [39m    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+[31m6|gse-api  | [39m    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+[31m6|gse-api  | [39m    at Module.load (node:internal/modules/cjs/loader:1266:32)
+[31m6|gse-api  | [39m    at Module._load (node:internal/modules/cjs/loader:1091:12)
+[31m6|gse-api  | [39m    at Module.require (node:internal/modules/cjs/loader:1289:19)
+[31m6|gse-api  | [39m    at Hook._require.Module.require (/usr/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39) {
+[31m6|gse-api  | [39m  code: 'MODULE_NOT_FOUND',
+[31m6|gse-api  | [39m  requireStack: [
+[31m6|gse-api  | [39m    '/var/www/gse/apps/api/dist/routes/crimes.js',
+[31m6|gse-api  | [39m    '/var/www/gse/apps/api/dist/server.js'
+[31m6|gse-api  | [39m  ]
+[31m6|gse-api  | [39m}
+
+[32m6|gse-api  | [39m{"level":30,"time":1772565675803,"pid":952763,"hostname":"vps.undercoverbattlebox.nl","msg":"Server listening at http://127.0.0.1:5001"}
+[32m6|gse-api  | [39m{"level":30,"time":1772565675804,"pid":952763,"hostname":"vps.undercoverbattlebox.nl","msg":"Server listening at http://178.251.232.12:5001"}
+[32m6|gse-api  | [39m{"level":30,"time":1772565675804,"pid":952763,"hostname":"vps.undercoverbattlebox.nl","msg":"Server listening at http://10.8.0.1:5001"}
+[32m6|gse-api  | [39m{"level":30,"time":1772565675804,"pid":952763,"hostname":"vps.undercoverbattlebox.nl","msg":"Server listening at http://10.200.0.1:5001"}
+[32m6|gse-api  | [39m{"level":30,"time":1772565675804,"pid":952763,"hostname":"vps.undercoverbattlebox.nl","msg":"GSE API running on port 5001"}
+^C
+[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ 
+[?2004l[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [7mcurl -X POST http://localhost:5001/crime[27m[7ms[27m[7m/commit \ [27m
+[7m  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nvd[27m[7mW[27m[7m50SWQiOiJmMGJjYTg0Mi00NTMzLTRmODEtYWIzZC1hODJlNTc5Y2I0MTUiLCJpYXQiOjE3NzI[27m[7m0[27m[7mOTcwMjEsImV4cCI6MTc3MjQ5NzkyMX0.TWHHwyFy7SM8zzhFCLX6h35vT9nJ4PtnK9OM3qZlM[27m[7mL[27m[7mI","refresh":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50SWQiOiJmMG[27m[7mJ[27m[7mjYTg0Mi00NTMzLTRmODEtYWIzZC1hODJlNTc5Y2I0MTUiLCJpYXQiOjE3NzI0OTcwMjEsImV4[27m[7mc[27m[7mCI6MTc3MzEwMTgyMX0._VoPtp41rl1Eh4r9JkcQKEuWtf3XwChnNlPkXvbV9bg" \ [27m
+[7m  -H "Content-Type: application/json" \[27m
+[7m  -d '{"crimeType":"STREET_THEFT"}'[27m[A[A[A[A[A[A[A[A[Acurl -X POST http://localhost:5001/crimes/commit \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50SWQiOiJmMGJjYTg0Mi00NTMzLTRmODEtYWIzZC1hODJlNTc5Y2I0MTUiLCJpYXQiOjE3NzI0OTcwMjEsImV4cCI6MTc3MjQ5NzkyMX0.TWHHwyFy7SM8zzhFCLX6h35vT9nJ4PtnK9OM3qZlMLI","refresh":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50SWQiOiJmMGJjYTg0Mi00NTMzLTRmODEtYWIzZC1hODJlNTc5Y2I0MTUiLCJpYXQiOjE3NzI0OTcwMjEsImV4cCI6MTc3MzEwMTgyMX0._VoPtp41rl1Eh4r9JkcQKEuWtf3XwChnNlPkXvbV9bg" \
+  -H "Content-Type: application/json" \
+  -d '{"crimeType":"STREET_THEFT"}'
+[?2004l{"error":"Unauthorized"}[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [7mcurl -X POST http://localhost:5001/crime[27m[7ms[27m[7m/commit \ [27m
+[7m  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nvd[27m[7mW[27m[7m50SWQiOiJmMGJjYTg0Mi00NTMzLTRmODEtYWIzZC1hODJlNTc5Y2I0MTUiLCJpYXQiOjE3NzI[27m[7m0[27m[7mOTcwMjEsImV4cCI6MTc3MjQ5NzkyMX0.TWHHwyFy7SM8zzhFCLX6h35vT9nJ4PtnK9OM3qZlM[27m[7mL[27m[7mI" \ [27m
+[7m  -H "Content-Type: application/json" \[27m
+[7m  -d '{"crimeType":"STREET_THEFT"}'[27m[A[A[A[A[A[A[Acurl -X POST http://localhost:5001/crimes/commit \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50SWQiOiJmMGJjYTg0Mi00NTMzLTRmODEtYWIzZC1hODJlNTc5Y2I0MTUiLCJpYXQiOjE3NzI0OTcwMjEsImV4cCI6MTc3MjQ5NzkyMX0.TWHHwyFy7SM8zzhFCLX6h35vT9nJ4PtnK9OM3qZlMLI" \
+  -H "Content-Type: application/json" \
+  -d '{"crimeType":"STREET_THEFT"}'
+[?2004l{"error":"Unauthorized"}[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [7mTOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXV[27m[7mC[27m[7mJ9.eyJhY2NvdW50SWQiOiJmMGJjYTg0Mi00NTMzLTRmODEtYWIzZC1hODJlNTc5Y2I0MTUiLC[27m[7mJ[27m[7mpYXQiOjE3NzI0OTcwMjEsImV4cCI6MTc3MjQ5NzkyMX0.TWHHwyFy7SM8zzhFCLX6h35vT9nJ[27m[7m4[27m[7mPtnK9OM3qZlMLI"[27m[A[A[A]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50SWQiOiJmMGJjYTg0Mi00NTMzLTRmODEtYWIzZC1hODJlNTc5Y2I0MTUiLCJpYXQiOjE3NzI0OTcwMjEsImV4cCI6MTc3MjQ5NzkyMX0.TWHHwyFy7SM8zzhFCLX6h35vT9nJ4PtnK9OM3qZlMLI"
+[?2004l[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [7mcurl -X POST http://localhost:5001/crime[27m[7ms[27m[7m/commit \ [27m
+[7m  -H "Authorization: Bearer $TOKEN" \[27m
+[7m  -H "Content-Type: application/json" \[27m
+[7m  -d '{"crimeType":"STREET_THEFT"}'[27m[A[A[A[Acurl -X POST http://localhost:5001/crimes/commit \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"crimeType":"STREET_THEFT"}'
+[?2004l{"error":"Unauthorized"}[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [7mcat .env[27mcat .env
+[?2004lDATABASE_URL=postgresql://postgres:LmdC7yHjBlpa8B4C@db.lmfwculiklqgwrpdvodf.supabase.co:5432/postgres
+[?2004h]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ [K]0;deploy@vps: /var/www/gse/apps/api[01;32mdeploy@vps[00m:[01;34m/var/www/gse/apps/api[00m$ cat [7mapps/api/src/server.ts[27m[1Papps/api/src/server.t[K[K[K[K[K[K[K[K[K[K[K[K[K[K[K[K[K[K[K[K[Ksrc/server.ts 
+[?2004limport "dotenv/config";
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
+import jwt from "@fastify/jwt";
+
+import prismaPlugin from "./plugins/prisma";
+import authPlugin from "./plugins/auth";
+
+import { authRoutes } from "./routes/auth";
+import { accountRoutes } from "./routes/account";
+import { characterRoutes } from "./routes/character";
+import { resourceRoutes } from "./routes/resources"; // ✅ ADDED
+import { crimeRoutes } from "./routes/crimes"; // ✅ ADDED
+
+const app = Fastify({ logger: true });
+
+async function bootstrap() {
+  await app.register(cors, {
+    origin: true,
+    credenti

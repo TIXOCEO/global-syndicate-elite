@@ -60,6 +60,8 @@ model Character {
   energy          Energy?
   jail            JailState?
 
+  crimeLogs       CrimeLog[]
+
   @@index([accountId])
 }
 
@@ -87,4 +89,18 @@ model JailState {
 
   jailRemainingSeconds Int @default(0)
   lastUpdatedAt        DateTime @default(now())
+}
+
+model CrimeLog {
+  id                String   @id @default(uuid())
+  characterId       String
+  character         Character @relation(fields: [characterId], references: [id])
+  crimeType         String
+  success           Boolean
+  cashGranted       Int
+  leadGranted       Int
+  energyConsumed    Int
+  createdAt         DateTime @default(now())
+
+  @@index([characterId])
 }
