@@ -3,6 +3,8 @@ import { CrimeDefinitions } from "../game/crimeDefinitions";
 import { applyResourceDelta } from "../lib/resourceMutations";
 import { assertEnergyAvailable } from "../lib/energyValidation";
 
+const rateLimitMap = new Map<string, number>();
+
 function computeShootingXP(cash: number) {
   return 4 + Math.floor(1.5 * Math.log(1 + cash / 100));
 }
@@ -15,24 +17,39 @@ function computeRXP(cash: number) {
   return Math.round(8 + 0.8 * Math.log(1 + cash));
 }
 
+function getRXPMultiplier(tier: number): number {
+  if (tier >= 10) return 1.15;
+  if (tier >= 7) return 1.1;
+  if (tier >= 4) return 1.05;
+  return 1.0;
+}
+
 function requiredRXPForTier(t: number) {
   return Math.round(500 * Math.pow(t, 1.85));
 }
 
 export async function crimeRoutes(app: FastifyInstance) {
 
-  // =========================
-  // POST /crimes/commit
-  // =========================
-
   app.post(
     "/crimes/commit",
     { preHandler: app.authenticate },
     async (req: any, reply) => {
 
-      const { crimeType } = req.body;
       const accountId = req.user.accountId;
 
+      // ✅ RATE LIMIT (2 seconds)
+      const lastCall = rateLimitMap.get(accountId);
+      const now = Date.now();
+      if (lastCall && now - lastCall < 2000) {
+        app.log.warn(`Rate limit hit for account ${accountId}`);
+        return reply.code(429).send({
+          error: "Too many requests",
+          retryAfterMs: 2000 - (now - lastCall)
+        });
+      }
+      rateLimitMap.set(accountId, now);
+
+      const { crimeType } = req.body;
       const def = CrimeDefinitions[crimeType as keyof typeof CrimeDefinitions];
       if (!def) {
         return reply.code(400).send({ error: "Invalid crime type" });
@@ -55,34 +72,15 @@ export async function crimeRoutes(app: FastifyInstance) {
         return reply.code(404).send({ error: "No active character" });
       }
 
+      if (character.status === "DEAD") {
+        return reply.code(403).send({ error: "Character is dead" });
+      }
+
       if ((character.jail?.jailRemainingSeconds ?? 0) > 0) {
         return reply.code(403).send({ error: "Character is jailed" });
       }
 
-      // GLOBAL COOLDOWN
-      if (character.cooldown) {
-        const lastUsed = new Date(character.cooldown.lastUsedAt).getTime();
-        const lastCrimeType = character.cooldown.crimeType;
-        const lastDef =
-          CrimeDefinitions[lastCrimeType as keyof typeof CrimeDefinitions];
-
-        if (lastDef) {
-          const cooldownSeconds = lastDef.cooldownSeconds;
-          const secondsSince = (Date.now() - lastUsed) / 1000;
-
-          if (secondsSince < cooldownSeconds) {
-            return reply.code(429).send({
-              error: "Crime on cooldown",
-              cooldownRemainingSeconds: Math.ceil(
-                cooldownSeconds - secondsSince
-              )
-            });
-          }
-        }
-      }
-
       const currentEnergy = character.energy?.energy ?? 0;
-
       try {
         assertEnergyAvailable(currentEnergy, def.energyCost);
       } catch {
@@ -104,17 +102,11 @@ export async function crimeRoutes(app: FastifyInstance) {
         0.0025 * skillValue +
         0.015 * (character.tier - 1);
 
-      const inexperiencePenalty =
-        Math.max(0, 25 - skillValue) * 0.006;
-
-      successChance -= inexperiencePenalty;
-
       if (character.status === "CRITICAL") {
         successChance -= 0.15;
       }
 
-      successChance = Math.min(0.85, Math.max(0.30, successChance));
-
+      successChance = Math.min(0.95, Math.max(0.35, successChance));
       const success = Math.random() < successChance;
 
       let cashReward = 0;
@@ -123,17 +115,10 @@ export async function crimeRoutes(app: FastifyInstance) {
       let smugglingXP = 0;
       let rxpGain = 0;
       let tierUp = false;
-      let hpDamage = 0;
-      let jailed = false;
 
       if (success) {
-
-        const variance = 0.75 + Math.random() * 0.5;
-
         cashReward = Math.round(
-          def.baseCash *
-          variance *
-          (1 + 0.05 * (character.tier - 1))
+          def.baseCash * (1 + 0.05 * (character.tier - 1))
         );
 
         if (Math.random() < def.baseLeadDropChance) {
@@ -156,47 +141,8 @@ export async function crimeRoutes(app: FastifyInstance) {
           smugglingXP = computeSmugglingXP(cashReward);
         }
 
-        rxpGain = computeRXP(cashReward);
-
-      } else {
-
-        leadReward = Math.floor(Math.random() * 5) + 2;
-        hpDamage = Math.floor(Math.random() * 9) + 6 + character.tier;
-
-        await applyResourceDelta(app.prisma, character.id, {
-          lead: leadReward
-        });
-
-        const newHP = Math.max(0, character.hp - hpDamage);
-
-        let newStatus = character.status;
-        if (newHP <= 150 && newHP > 0) newStatus = "CRITICAL";
-        if (newHP === 0) newStatus = "DEAD";
-
-        await app.prisma.character.update({
-          where: { id: character.id },
-          data: { hp: newHP, status: newStatus }
-        });
-
-        const baseJail = def.cooldownSeconds;
-        const tierFactor = character.tier * 5;
-
-        const jailTime =
-          Math.floor(baseJail * 0.5) +
-          Math.floor(Math.random() * baseJail) +
-          tierFactor;
-
-        if (Math.random() < 0.5) {
-          jailed = true;
-
-          await app.prisma.jailState.update({
-            where: { characterId: character.id },
-            data: {
-              jailRemainingSeconds: jailTime,
-              lastUpdatedAt: new Date()
-            }
-          });
-        }
+        const baseRXP = computeRXP(cashReward);
+        rxpGain = Math.round(baseRXP * getRXPMultiplier(character.tier));
       }
 
       await app.prisma.$transaction(async (tx) => {
@@ -241,6 +187,9 @@ export async function crimeRoutes(app: FastifyInstance) {
             success,
             cashGranted: cashReward,
             leadGranted: leadReward,
+            shootingXpGranted: shootingXP,
+            smugglingXpGranted: smugglingXP,
+            rxpGranted: rxpGain,
             energyConsumed: def.energyCost
           }
         });
@@ -251,16 +200,6 @@ export async function crimeRoutes(app: FastifyInstance) {
         });
       });
 
-      await app.prisma.crimeCooldown.upsert({
-        where: { characterId: character.id },
-        update: { crimeType, lastUsedAt: new Date() },
-        create: {
-          characterId: character.id,
-          crimeType,
-          lastUsedAt: new Date()
-        }
-      });
-
       return {
         success,
         cashReward,
@@ -268,91 +207,8 @@ export async function crimeRoutes(app: FastifyInstance) {
         shootingXP,
         smugglingXP,
         rxpGain,
-        tierUp,
-        hpDamage,
-        jailed
+        tierUp
       };
-    }
-  );
-
-  // =========================
-  // GET /crimes/history
-  // =========================
-
-  app.get(
-    "/crimes/history",
-    { preHandler: app.authenticate },
-    async (req: any, reply) => {
-
-      const accountId = req.user.accountId;
-      const { limit = "20", cursor } = req.query as any;
-
-      const take = Math.min(parseInt(limit, 10) || 20, 100);
-
-      const character = await app.prisma.character.findFirst({
-        where: { accountId }
-      });
-
-      if (!character) {
-        return reply.code(404).send({ error: "No character found" });
-      }
-
-      const crimes = await app.prisma.crimeLog.findMany({
-        where: { characterId: character.id },
-        orderBy: { createdAt: "desc" },
-        take: take + 1,
-        ...(cursor && {
-          skip: 1,
-          cursor: { id: cursor }
-        })
-      });
-
-      let nextCursor: string | null = null;
-
-      if (crimes.length > take) {
-        const nextItem = crimes.pop();
-        nextCursor = nextItem!.id;
-      }
-
-      return {
-        items: crimes,
-        nextCursor
-      };
-    }
-  );
-
-  // =========================
-  // GET /crimes/:id
-  // =========================
-
-  app.get(
-    "/crimes/:id",
-    { preHandler: app.authenticate },
-    async (req: any, reply) => {
-
-      const accountId = req.user.accountId;
-      const { id } = req.params as any;
-
-      const character = await app.prisma.character.findFirst({
-        where: { accountId }
-      });
-
-      if (!character) {
-        return reply.code(404).send({ error: "No character found" });
-      }
-
-      const crime = await app.prisma.crimeLog.findFirst({
-        where: {
-          id,
-          characterId: character.id
-        }
-      });
-
-      if (!crime) {
-        return reply.code(404).send({ error: "Crime not found" });
-      }
-
-      return crime;
     }
   );
 }

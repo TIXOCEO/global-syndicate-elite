@@ -1,0 +1,7 @@
+-- CreateEnum
+CREATE TYPE "CrimeType" AS ENUM ('STREET_THEFT', 'BLACK_MARKET_DEAL', 'WAREHOUSE_RAID');
+
+-- AlterTable
+ALTER TABLE "CrimeLog" ADD COLUMN     "rxpGranted" INTEGER DEFAULT 0,
+ADD COLUMN     "shootingXpGranted" INTEGER DEFAULT 0,
+ADD COLUMN     "smugglingXpGranted" INTEGER DEFAULT 0;

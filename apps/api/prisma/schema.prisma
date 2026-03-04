@@ -17,6 +17,12 @@ enum CharacterStatus {
   DEAD
 }
 
+enum CrimeType {
+  STREET_THEFT
+  BLACK_MARKET_DEAL
+  WAREHOUSE_RAID
+}
+
 model Account {
   id              String   @id @default(uuid())
   email           String   @unique
@@ -45,13 +51,12 @@ model Character {
   status          CharacterStatus @default(ACTIVE)
   createdAt       DateTime @default(now())
   diedAt          DateTime?
-  lastCrimeAt     DateTime?   // ✅ ADDED
+  lastCrimeAt     DateTime?
   skills          Skills?
   energy          Energy?
   jail            JailState?
   cooldown        CrimeCooldown?
   crimeLogs       CrimeLog[]
-
   @@index([accountId])
 }
 
@@ -79,15 +84,18 @@ model JailState {
 }
 
 model CrimeLog {
-  id                String   @id @default(uuid())
-  characterId       String
-  character         Character @relation(fields: [characterId], references: [id])
-  crimeType         String
-  success           Boolean
-  cashGranted       Int
-  leadGranted       Int
-  energyConsumed    Int
-  createdAt         DateTime @default(now())
+  id                  String   @id @default(uuid())
+  characterId         String
+  character           Character @relation(fields: [characterId], references: [id])
+  crimeType           CrimeType
+  success             Boolean
+  cashGranted         Int
+  leadGranted         Int
+  shootingXpGranted   Int
+  smugglingXpGranted  Int
+  rxpGranted          Int
+  energyConsumed      Int
+  createdAt           DateTime @default(now())
 
   @@index([characterId, createdAt(sort: Desc)])
 }
@@ -97,6 +105,5 @@ model CrimeCooldown {
   character   Character @relation(fields: [characterId], references: [id])
   crimeType   String
   lastUsedAt  DateTime
-
   @@index([characterId])
 }
