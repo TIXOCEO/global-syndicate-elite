@@ -20,6 +20,11 @@ function requiredRXPForTier(t: number) {
 }
 
 export async function crimeRoutes(app: FastifyInstance) {
+
+  // =========================
+  // POST /crimes/commit
+  // =========================
+
   app.post(
     "/crimes/commit",
     { preHandler: app.authenticate },
@@ -58,7 +63,6 @@ export async function crimeRoutes(app: FastifyInstance) {
       if (character.cooldown) {
         const lastUsed = new Date(character.cooldown.lastUsedAt).getTime();
         const lastCrimeType = character.cooldown.crimeType;
-
         const lastDef =
           CrimeDefinitions[lastCrimeType as keyof typeof CrimeDefinitions];
 
@@ -245,7 +249,6 @@ export async function crimeRoutes(app: FastifyInstance) {
           where: { id: character.id },
           data: { lastCrimeAt: new Date() }
         });
-
       });
 
       await app.prisma.crimeCooldown.upsert({
@@ -269,6 +272,87 @@ export async function crimeRoutes(app: FastifyInstance) {
         hpDamage,
         jailed
       };
+    }
+  );
+
+  // =========================
+  // GET /crimes/history
+  // =========================
+
+  app.get(
+    "/crimes/history",
+    { preHandler: app.authenticate },
+    async (req: any, reply) => {
+
+      const accountId = req.user.accountId;
+      const { limit = "20", cursor } = req.query as any;
+
+      const take = Math.min(parseInt(limit, 10) || 20, 100);
+
+      const character = await app.prisma.character.findFirst({
+        where: { accountId }
+      });
+
+      if (!character) {
+        return reply.code(404).send({ error: "No character found" });
+      }
+
+      const crimes = await app.prisma.crimeLog.findMany({
+        where: { characterId: character.id },
+        orderBy: { createdAt: "desc" },
+        take: take + 1,
+        ...(cursor && {
+          skip: 1,
+          cursor: { id: cursor }
+        })
+      });
+
+      let nextCursor: string | null = null;
+
+      if (crimes.length > take) {
+        const nextItem = crimes.pop();
+        nextCursor = nextItem!.id;
+      }
+
+      return {
+        items: crimes,
+        nextCursor
+      };
+    }
+  );
+
+  // =========================
+  // GET /crimes/:id
+  // =========================
+
+  app.get(
+    "/crimes/:id",
+    { preHandler: app.authenticate },
+    async (req: any, reply) => {
+
+      const accountId = req.user.accountId;
+      const { id } = req.params as any;
+
+      const character = await app.prisma.character.findFirst({
+        where: { accountId }
+      });
+
+      if (!character) {
+        return reply.code(404).send({ error: "No character found" });
+      }
+
+      const crime = await app.prisma.crimeLog.findFirst({
+        where: {
+          id,
+          characterId: character.id
+        }
+      });
+
+      if (!crime) {
+        return reply.code(404).send({ error: "Crime not found" });
+      }
+
+      return crime;
     }
   );
 }

@@ -89,7 +89,7 @@ model CrimeLog {
   energyConsumed    Int
   createdAt         DateTime @default(now())
 
-  @@index([characterId])
+  @@index([characterId, createdAt(sort: Desc)])
 }
 
 model CrimeCooldown {
