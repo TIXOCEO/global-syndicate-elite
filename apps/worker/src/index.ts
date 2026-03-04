@@ -24,35 +24,30 @@ const prisma = new PrismaClient({ adapter });
 async function energyRegenTick() {
   const now = new Date();
 
-  try {
-    const energies = await prisma.energy.findMany();
+  const energies = await prisma.energy.findMany();
 
-    for (const entry of energies) {
+  for (const entry of energies) {
 
-      const last = new Date(entry.lastRegenAt);
-      const secondsElapsed =
-        Math.floor((now.getTime() - last.getTime()) / 1000);
+    const last = new Date(entry.lastRegenAt);
+    const secondsElapsed =
+      Math.floor((now.getTime() - last.getTime()) / 1000);
 
-      if (secondsElapsed < 60) continue;
+    if (secondsElapsed < 60) continue;
 
-      const regenAmount = Math.floor(secondsElapsed / 60);
-      if (regenAmount <= 0) continue;
+    const regenAmount = Math.floor(secondsElapsed / 60);
+    if (regenAmount <= 0) continue;
 
-      const newEnergy = Math.min(100, entry.energy + regenAmount);
+    const newEnergy = Math.min(100, entry.energy + regenAmount);
 
-      await prisma.energy.update({
-        where: { characterId: entry.characterId },
-        data: {
-          energy: newEnergy,
-          lastRegenAt: new Date(
-            last.getTime() + regenAmount * 60 * 1000
-          )
-        }
-      });
-    }
-
-  } catch (err) {
-    console.error("[worker] energy tick error", err);
+    await prisma.energy.update({
+      where: { characterId: entry.characterId },
+      data: {
+        energy: newEnergy,
+        lastRegenAt: new Date(
+          last.getTime() + regenAmount * 60 * 1000
+        )
+      }
+    });
   }
 }
 
@@ -60,9 +55,7 @@ async function jailTick() {
   const now = new Date();
 
   const jailed = await prisma.jailState.findMany({
-    where: {
-      jailRemainingSeconds: { gt: 0 }
-    }
+    where: { jailRemainingSeconds: { gt: 0 } }
   });
 
   for (const entry of jailed) {
@@ -86,15 +79,58 @@ async function jailTick() {
   }
 }
 
+async function leadDecayTick() {
+  const now = new Date();
+
+  const characters = await prisma.character.findMany({
+    where: { lead: { gt: 0 } },
+    include: { jail: true }
+  });
+
+  for (const char of characters) {
+
+    let decay = 1;
+
+    decay += Math.floor(char.lead / 100);
+
+    if ((char.jail?.jailRemainingSeconds ?? 0) > 0) {
+      decay += 1;
+    }
+
+    if (char.lastCrimeAt) {
+      const minutesSinceCrime =
+        (now.getTime() - new Date(char.lastCrimeAt).getTime()) / 60000;
+
+      if (minutesSinceCrime > 5) {
+        decay += Math.floor(minutesSinceCrime / 5);
+      }
+    }
+
+    decay -= Math.floor(char.tier / 3);
+
+    decay = Math.max(1, decay);
+
+    const newLead = Math.max(0, char.lead - decay);
+
+    if (newLead !== char.lead) {
+      await prisma.character.update({
+        where: { id: char.id },
+        data: { lead: newLead }
+      });
+    }
+  }
+}
+
 async function start() {
   await prisma.$connect();
 
   setInterval(async () => {
     await energyRegenTick();
     await jailTick();
+    await leadDecayTick();
   }, 60_000);
 
-  console.log("Worker active (energy + jail)");
+  console.log("Worker active (energy + jail + lead)");
 }
 
 start();

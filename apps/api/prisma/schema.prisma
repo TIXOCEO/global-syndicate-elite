@@ -21,16 +21,12 @@ model Account {
   id              String   @id @default(uuid())
   email           String   @unique
   passwordHash    String
-
   referralCode    String   @unique
   referredByCode  String?
   eliteCredits    Int      @default(0)
-
   status          AccountStatus @default(ACTIVE)
-
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
   characters      Character[]
 }
 
@@ -38,29 +34,22 @@ model Character {
   id              String   @id @default(uuid())
   accountId       String
   account         Account  @relation(fields: [accountId], references: [id])
-
   nickname        String   @unique
-
   tier            Int      @default(1)
   rxp             Int      @default(0)
-
   hp              Int      @default(1000)
   notoriety       Int      @default(0)
-
   cash            Int      @default(0)
   lead            Int      @default(0)
   bullets         Int      @default(0)
-
   status          CharacterStatus @default(ACTIVE)
-
   createdAt       DateTime @default(now())
   diedAt          DateTime?
-
+  lastCrimeAt     DateTime?   // ✅ ADDED
   skills          Skills?
   energy          Energy?
   jail            JailState?
   cooldown        CrimeCooldown?
-
   crimeLogs       CrimeLog[]
 
   @@index([accountId])
@@ -69,7 +58,6 @@ model Character {
 model Skills {
   characterId     String @id
   character       Character @relation(fields: [characterId], references: [id])
-
   shooting        Int @default(0)
   smuggling       Int @default(0)
   investigation   Int @default(0)
@@ -79,7 +67,6 @@ model Skills {
 model Energy {
   characterId     String @id
   character       Character @relation(fields: [characterId], references: [id])
-
   energy          Int @default(100)
   lastRegenAt     DateTime @default(now())
 }
@@ -87,7 +74,6 @@ model Energy {
 model JailState {
   characterId     String @id
   character       Character @relation(fields: [characterId], references: [id])
-
   jailRemainingSeconds Int @default(0)
   lastUpdatedAt        DateTime @default(now())
 }

@@ -58,6 +58,7 @@ export async function crimeRoutes(app: FastifyInstance) {
       if (character.cooldown) {
         const lastUsed = new Date(character.cooldown.lastUsedAt).getTime();
         const lastCrimeType = character.cooldown.crimeType;
+
         const lastDef =
           CrimeDefinitions[lastCrimeType as keyof typeof CrimeDefinitions];
 
@@ -165,7 +166,6 @@ export async function crimeRoutes(app: FastifyInstance) {
         const newHP = Math.max(0, character.hp - hpDamage);
 
         let newStatus = character.status;
-
         if (newHP <= 150 && newHP > 0) newStatus = "CRITICAL";
         if (newHP === 0) newStatus = "DEAD";
 
@@ -174,7 +174,6 @@ export async function crimeRoutes(app: FastifyInstance) {
           data: { hp: newHP, status: newStatus }
         });
 
-        // 🔥 NEW BALANCED JAIL FORMULA
         const baseJail = def.cooldownSeconds;
         const tierFactor = character.tier * 5;
 
@@ -183,9 +182,7 @@ export async function crimeRoutes(app: FastifyInstance) {
           Math.floor(Math.random() * baseJail) +
           tierFactor;
 
-        const arrestChance = 0.5;
-
-        if (Math.random() < arrestChance) {
+        if (Math.random() < 0.5) {
           jailed = true;
 
           await app.prisma.jailState.update({
@@ -243,6 +240,12 @@ export async function crimeRoutes(app: FastifyInstance) {
             energyConsumed: def.energyCost
           }
         });
+
+        await tx.character.update({
+          where: { id: character.id },
+          data: { lastCrimeAt: new Date() }
+        });
+
       });
 
       await app.prisma.crimeCooldown.upsert({
