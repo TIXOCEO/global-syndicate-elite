@@ -4,9 +4,6 @@ const path = require("path");
 const nextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../../"),
-  experimental: {
-    turbo: false
-  }
 };
 
 module.exports = nextConfig;
