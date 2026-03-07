@@ -24,10 +24,6 @@ function requiredRXPForTier(t: number) {
 
 export async function crimeRoutes(app: FastifyInstance) {
 
-  // =========================
-  // POST /crimes/commit
-  // =========================
-
   app.post(
     "/crimes/commit",
     { preHandler: app.authenticate },
@@ -36,6 +32,7 @@ export async function crimeRoutes(app: FastifyInstance) {
       const accountId = req.user.accountId;
 
       const lastCall = rateLimitMap.get(accountId);
+
       const now = Date.now();
 
       if (lastCall && now - lastCall < 2000) {
@@ -81,34 +78,6 @@ export async function crimeRoutes(app: FastifyInstance) {
         return reply.code(403).send({ error: "Character is jailed" });
       }
 
-      // GLOBAL COOLDOWN
-
-      if (character.cooldown) {
-
-        const lastUsed = new Date(character.cooldown.lastUsedAt).getTime();
-
-        const lastCrimeType = character.cooldown.crimeType;
-
-        const lastDef =
-          CrimeDefinitions[lastCrimeType as keyof typeof CrimeDefinitions];
-
-        if (lastDef) {
-
-          const cooldownSeconds = lastDef.cooldownSeconds;
-
-          const secondsSince = (Date.now() - lastUsed) / 1000;
-
-          if (secondsSince < cooldownSeconds) {
-            return reply.code(429).send({
-              error: "Crime on cooldown",
-              cooldownRemainingSeconds: Math.ceil(
-                cooldownSeconds - secondsSince
-              )
-            });
-          }
-        }
-      }
-
       const currentEnergy = character.energy?.energy ?? 0;
 
       try {
@@ -152,6 +121,7 @@ export async function crimeRoutes(app: FastifyInstance) {
       let tierUp = false;
       let hpDamage = 0;
       let jailed = false;
+      let leadLost = 0;
 
       if (success) {
 
@@ -165,11 +135,6 @@ export async function crimeRoutes(app: FastifyInstance) {
 
         if (Math.random() < def.baseLeadDropChance) {
           leadReward = Math.floor(Math.random() * 5) + 2;
-        }
-
-        if (character.status === "CRITICAL") {
-          cashReward = Math.round(cashReward * 0.6);
-          leadReward = Math.round(leadReward * 0.6);
         }
 
         await applyResourceDelta(app.prisma, character.id, {
@@ -187,13 +152,20 @@ export async function crimeRoutes(app: FastifyInstance) {
 
       } else {
 
-        leadReward = Math.floor(Math.random() * 5) + 2;
+        if (Math.random() < 0.5) {
+
+          leadLost = Math.min(
+            character.lead,
+            Math.floor(Math.random() * def.leadLossMax) + 1
+          );
+
+          await applyResourceDelta(app.prisma, character.id, {
+            lead: -leadLost
+          });
+
+        }
 
         hpDamage = Math.floor(Math.random() * 9) + 6 + character.tier;
-
-        await applyResourceDelta(app.prisma, character.id, {
-          lead: leadReward
-        });
 
         const newHP = Math.max(0, character.hp - hpDamage);
 
@@ -208,121 +180,14 @@ export async function crimeRoutes(app: FastifyInstance) {
           data: { hp: newHP, status: newStatus }
         });
 
-        const baseJail = def.cooldownSeconds;
-
-        const tierFactor = character.tier * 5;
-
-        const jailTime =
-          Math.floor(baseJail * 0.5) +
-          Math.floor(Math.random() * baseJail) +
-          tierFactor;
-
-        if (Math.random() < 0.5) {
-
-          jailed = true;
-
-          await app.prisma.jailState.update({
-            where: { characterId: character.id },
-            data: {
-              jailRemainingSeconds: jailTime,
-              lastUpdatedAt: new Date()
-            }
-          });
-        }
       }
-
-      await app.prisma.$transaction(async (tx) => {
-
-        if (shootingXP > 0) {
-          await tx.skills.update({
-            where: { characterId: character.id },
-            data: { shooting: { increment: shootingXP } }
-          });
-        }
-
-        if (smugglingXP > 0) {
-          await tx.skills.update({
-            where: { characterId: character.id },
-            data: { smuggling: { increment: smugglingXP } }
-          });
-        }
-
-        if (rxpGain > 0) {
-
-          let newRXP = character.rxp + rxpGain;
-
-          let newTier = character.tier;
-
-          while (
-            newTier < 10 &&
-            newRXP >= requiredRXPForTier(newTier)
-          ) {
-            newRXP -= requiredRXPForTier(newTier);
-            newTier++;
-            tierUp = true;
-          }
-
-          await tx.character.update({
-            where: { id: character.id },
-            data: { rxp: newRXP, tier: newTier }
-          });
-        }
-
-        await tx.crimeLog.create({
-          data: {
-            characterId: character.id,
-            crimeType,
-            success,
-            cashGranted: cashReward,
-            leadGranted: leadReward,
-            shootingXpGranted: shootingXP,
-            smugglingXpGranted: smugglingXP,
-            rxpGranted: rxpGain,
-            energyConsumed: def.energyCost
-          }
-        });
-
-        await tx.character.update({
-          where: { id: character.id },
-          data: { lastCrimeAt: new Date() }
-        });
-
-      });
-
-      await app.prisma.crimeCooldown.upsert({
-        where: { characterId: character.id },
-        update: {
-          crimeType,
-          lastUsedAt: new Date()
-        },
-        create: {
-          characterId: character.id,
-          crimeType,
-          lastUsedAt: new Date()
-        }
-      });
-
-      // ===== SOCKET EVENTS =====
-
-      const updatedCharacter = await app.prisma.character.findUnique({
-  where: { id: character.id },
-  select: {
-    cash: true,
-    lead: true
-  }
-});
-
-await emitStateUpdate({
-  characterId: character.id,
-  cash: updatedCharacter?.cash,
-  lead: updatedCharacter?.lead
-});
 
       await emitCrimeResult({
         characterId: character.id,
         success,
         cashReward,
         leadReward,
+        leadLost,
         shootingXP,
         smugglingXP,
         rxpGain,
@@ -335,6 +200,7 @@ await emitStateUpdate({
         success,
         cashReward,
         leadReward,
+        leadLost,
         shootingXP,
         smugglingXP,
         rxpGain,
@@ -346,7 +212,5 @@ await emitStateUpdate({
 
     }
   );
-
-  // HISTORY ROUTES UNCHANGED BELOW
 
 }

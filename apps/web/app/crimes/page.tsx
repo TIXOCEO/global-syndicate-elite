@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { CRIMES } from "@/lib/crimeDefinitions";
 import { apiFetch } from "@/lib/apiClient";
@@ -9,22 +10,33 @@ import { useCharacterStore } from "@/stores/characterStore";
 export default function CrimesPage() {
 
   const { energy, triggerPulse } = useResourceStore();
+
   const setResources = useResourceStore((s) => s.setResources);
+
   const setCharacter = useCharacterStore((s) => s.setCharacter);
 
   const committing = useCrimeStore((s) => s.committing);
+
   const setCommitting = useCrimeStore((s) => s.setCommitting);
+
   const setResult = useCrimeStore((s) => s.setResult);
+
   const setResolverStage = useCrimeStore((s) => s.setResolverStage);
 
   const [modal, setModal] = useState<any | null>(null);
-  const [executionStage, setExecutionStage] = useState<"planning" | "executing" | null>(null);
+
+  const [executionStage, setExecutionStage] = useState<
+    "planning" | "executing" | null
+  >(null);
 
   const [displayCash, setDisplayCash] = useState(0);
+
   const [displayLead, setDisplayLead] = useState(0);
+
   const [displayXP, setDisplayXP] = useState(0);
 
   const [cooldown, setCooldown] = useState(0);
+
   const [flash, setFlash] = useState<"success" | "failed" | null>(null);
 
   async function hydrateState() {
@@ -51,7 +63,9 @@ export default function CrimesPage() {
       setCooldown(sync.cooldown?.remaining ?? 0);
 
     } catch (e) {
+
       console.error("State refresh failed", e);
+
     }
 
   }
@@ -64,6 +78,13 @@ export default function CrimesPage() {
     }
 
     try {
+
+      const sync = await apiFetch("/api/state/sync");
+
+      if (sync.jail?.remaining > 0) {
+        alert("You are currently jailed.");
+        return;
+      }
 
       setCommitting(true);
 
@@ -97,6 +118,7 @@ export default function CrimesPage() {
       setResolverStage("result");
 
       setResult(result);
+
       setModal(result);
 
       triggerPulse();
@@ -110,6 +132,7 @@ export default function CrimesPage() {
     } catch (err: any) {
 
       setExecutionStage(null);
+
       alert(err.message);
 
     } finally {
@@ -184,17 +207,14 @@ export default function CrimesPage() {
   }, [cooldown]);
 
   return (
-
     <div className="space-y-6 relative">
 
       {flash && (
-
         <div
           className={`pointer-events-none fixed inset-0 z-50 ${
             flash === "success" ? "bg-white/20" : "bg-red-500/20"
           }`}
         />
-
       )}
 
       <h1 className="text-2xl font-bold text-[#C6A756]">
@@ -202,15 +222,12 @@ export default function CrimesPage() {
       </h1>
 
       {cooldown > 0 && (
-
         <div className="bg-[#111827] border border-[#C6A756] rounded-lg p-3 text-center text-sm text-zinc-300">
           Global cooldown: {cooldown}s
         </div>
-
       )}
 
       {CRIMES.map((crime) => (
-
         <div
           key={crime.key}
           className="bg-[#111827] border border-[#C6A756] rounded-xl overflow-hidden"
@@ -255,21 +272,17 @@ export default function CrimesPage() {
           </div>
 
         </div>
-
       ))}
 
       {executionStage && (
-
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50">
 
           <div className="text-center space-y-5">
 
             <div className="text-[#C6A756] text-xl font-semibold animate-pulse">
-
               {executionStage === "planning"
                 ? "Planning Operation"
                 : "Executing Operation"}
-
             </div>
 
             <div className="w-64 h-2 bg-zinc-800 rounded overflow-hidden">
@@ -284,21 +297,17 @@ export default function CrimesPage() {
             </div>
 
             <div className="text-xs text-zinc-500">
-
               {executionStage === "planning"
                 ? "Establishing route..."
                 : "Resolving outcome..."}
-
             </div>
 
           </div>
 
         </div>
-
       )}
 
       {modal && (
-
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
 
           <div className="bg-[#111827] border border-[#C6A756] rounded-xl p-6 w-80 text-center space-y-4">
@@ -308,27 +317,19 @@ export default function CrimesPage() {
             </h2>
 
             {modal.success && (
-
               <div className="text-sm space-y-1">
-
                 <div>+$ {displayCash}</div>
                 <div>+{displayLead} Lead</div>
                 <div>+{displayXP} XP</div>
-
               </div>
-
             )}
 
             {!modal.success && (
-
               <div className="text-sm text-zinc-400">
-
                 Operation failed
                 {modal.hpDamage ? ` • HP -${modal.hpDamage}` : ""}
                 {modal.jailed ? ` • Jailed` : ""}
-
               </div>
-
             )}
 
             <button
@@ -341,11 +342,8 @@ export default function CrimesPage() {
           </div>
 
         </div>
-
       )}
 
     </div>
-
   );
-
 }

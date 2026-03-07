@@ -1,4 +1,5 @@
 "use client";
+
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import GlobalHUD from "@/components/hud/GlobalHUD";
@@ -21,10 +22,8 @@ export default function LayoutClient({
 
   const setCharacter = useCharacterStore((s) => s.setCharacter);
   const clearCharacter = useCharacterStore((s) => s.clearCharacter);
-
   const setResources = useResourceStore((s) => s.setResources);
 
-  // TODO replace later with real character rank
   const characterRank = 2;
 
   async function bootClient() {
@@ -37,48 +36,48 @@ export default function LayoutClient({
           : null;
 
       if (!token) {
-
         if (pathname !== "/login") {
           router.replace("/login");
         }
-
         return;
-
       }
 
-      const character = await apiFetch("/api/character/me");
+      const sync = await apiFetch("/api/state/sync");
 
-      if (!character) {
-
+      if (!sync?.character) {
         clearCharacter();
         router.replace("/dashboard");
         return;
-
       }
 
       setCharacter({
-        id: character.id,
-        nickname: character.nickname,
-        tier: character.tier,
-        hp: character.hp,
-        notoriety: character.notoriety ?? 0,
-        status: character.status
+        id: sync.character.id,
+        nickname: sync.character.nickname,
+        tier: sync.character.tier,
+        hp: sync.character.hp,
+        notoriety: sync.character.notoriety ?? 0,
+        status: sync.character.status,
+        rxp: sync.character.rxp
       });
 
       setResources({
-        cash: character.cash,
-        lead: character.lead,
-        energy: character.energy?.energy ?? 0
+        cash: sync.resources.cash,
+        lead: sync.resources.lead,
+        energy: sync.resources.energy
       });
 
-      if (character.status === "DEAD") {
-
+      if (sync.character.status === "DEAD") {
         if (pathname !== "/death") {
           router.replace("/death");
         }
-
         return;
+      }
 
+      if (sync.jail?.remaining > 0) {
+        if (pathname !== "/jail") {
+          router.replace("/jail");
+        }
+        return;
       }
 
     } catch (err) {
@@ -96,30 +95,22 @@ export default function LayoutClient({
   }
 
   useEffect(() => {
-
     bootClient();
-
   }, []);
 
   return (
-
     <div className="flex flex-col min-h-screen">
 
       {!hideHUD && <GlobalHUD />}
 
-      {/* LOGIN PAGE = FULLSCREEN */}
       {hideHUD ? (
-
         <main className="flex-1">
           {children}
         </main>
-
       ) : (
-
         <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-20 pb-24">
           {children}
         </main>
-
       )}
 
       {!hideHUD && <BottomNav />}
@@ -127,7 +118,5 @@ export default function LayoutClient({
       <InstallModal rank={characterRank} />
 
     </div>
-
   );
-
 }
