@@ -1,43 +1,62 @@
 "use client";
-
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const router = useRouter();
+
   async function login() {
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password })
-    });
+    try {
 
-    const data = await res.json();
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
 
-    if (data?.access) {
-      localStorage.setItem("token", data.access);
-      window.location.href = "/dashboard";
-    } else {
+      const data = await res.json();
+
+      if (data?.access) {
+
+        localStorage.setItem("token", data.access);
+
+        router.replace("/dashboard");
+
+      } else {
+
+        alert("Login failed");
+
+      }
+
+    } catch (err) {
+
+      console.error("Login failed", err);
       alert("Login failed");
+
     }
 
   }
 
   return (
+
     <div className="min-h-screen bg-[#0B1220] text-white flex items-center justify-center px-6">
 
       <div className="w-full max-w-sm">
 
         {/* LOGO */}
         <div className="flex justify-center mb-6">
+
           <img
             src="/icons/icon-192.png"
             alt="GSE"
             className="w-20 h-20"
           />
+
         </div>
 
         {/* TITLE */}
@@ -74,6 +93,7 @@ export default function LoginPage() {
       </div>
 
     </div>
+
   );
 
 }

@@ -12,6 +12,7 @@ import { accountRoutes } from "./routes/account";
 import { characterRoutes } from "./routes/character";
 import { resourceRoutes } from "./routes/resources";
 import { crimeRoutes } from "./routes/crimes";
+import { stateRoutes } from "./routes/state";
 
 const app = Fastify({ logger: true });
 
@@ -23,7 +24,6 @@ async function bootstrap() {
 
   await app.register(cookie);
 
-  // 🔒 REQUIRE EXPLICIT SECRET
   await app.register(jwt, {
     secret: process.env.JWT_ACCESS_SECRET!
   });
@@ -34,6 +34,7 @@ async function bootstrap() {
   await app.register(authRoutes, { prefix: "/auth" });
   await app.register(accountRoutes);
   await app.register(characterRoutes);
+  await app.register(stateRoutes);
   await app.register(resourceRoutes);
   await app.register(crimeRoutes);
 

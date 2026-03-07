@@ -1,11 +1,15 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://globalsyndicate.online";
+const API_BASE =
+  typeof window !== "undefined"
+    ? ""
+    : process.env.NEXT_PUBLIC_API_URL || "https://globalsyndicate.online";
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
+    ...(options.headers as Record<string, string>)
   };
 
   if (token) {
@@ -15,7 +19,7 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers,
-    credentials: "include",
+    credentials: "include"
   });
 
   if (!res.ok) {

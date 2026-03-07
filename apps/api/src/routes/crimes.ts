@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { CrimeDefinitions } from "../game/crimeDefinitions";
 import { applyResourceDelta } from "../lib/resourceMutations";
 import { assertEnergyAvailable } from "../lib/energyValidation";
+import { emitStateUpdate, emitCrimeResult } from "../lib/wsEmitter";
 
 const rateLimitMap = new Map<string, number>();
 
@@ -17,18 +18,15 @@ function computeRXP(cash: number) {
   return Math.round(8 + 0.8 * Math.log(1 + cash));
 }
 
-function getRXPMultiplier(tier: number): number {
-  if (tier >= 10) return 1.15;
-  if (tier >= 7) return 1.1;
-  if (tier >= 4) return 1.05;
-  return 1.0;
-}
-
 function requiredRXPForTier(t: number) {
   return Math.round(500 * Math.pow(t, 1.85));
 }
 
 export async function crimeRoutes(app: FastifyInstance) {
+
+  // =========================
+  // POST /crimes/commit
+  // =========================
 
   app.post(
     "/crimes/commit",
@@ -37,20 +35,23 @@ export async function crimeRoutes(app: FastifyInstance) {
 
       const accountId = req.user.accountId;
 
-      // ✅ RATE LIMIT (2 seconds)
       const lastCall = rateLimitMap.get(accountId);
       const now = Date.now();
+
       if (lastCall && now - lastCall < 2000) {
-        app.log.warn(`Rate limit hit for account ${accountId}`);
         return reply.code(429).send({
           error: "Too many requests",
           retryAfterMs: 2000 - (now - lastCall)
         });
       }
+
       rateLimitMap.set(accountId, now);
 
       const { crimeType } = req.body;
-      const def = CrimeDefinitions[crimeType as keyof typeof CrimeDefinitions];
+
+      const def =
+        CrimeDefinitions[crimeType as keyof typeof CrimeDefinitions];
+
       if (!def) {
         return reply.code(400).send({ error: "Invalid crime type" });
       }
@@ -80,7 +81,36 @@ export async function crimeRoutes(app: FastifyInstance) {
         return reply.code(403).send({ error: "Character is jailed" });
       }
 
+      // GLOBAL COOLDOWN
+
+      if (character.cooldown) {
+
+        const lastUsed = new Date(character.cooldown.lastUsedAt).getTime();
+
+        const lastCrimeType = character.cooldown.crimeType;
+
+        const lastDef =
+          CrimeDefinitions[lastCrimeType as keyof typeof CrimeDefinitions];
+
+        if (lastDef) {
+
+          const cooldownSeconds = lastDef.cooldownSeconds;
+
+          const secondsSince = (Date.now() - lastUsed) / 1000;
+
+          if (secondsSince < cooldownSeconds) {
+            return reply.code(429).send({
+              error: "Crime on cooldown",
+              cooldownRemainingSeconds: Math.ceil(
+                cooldownSeconds - secondsSince
+              )
+            });
+          }
+        }
+      }
+
       const currentEnergy = character.energy?.energy ?? 0;
+
       try {
         assertEnergyAvailable(currentEnergy, def.energyCost);
       } catch {
@@ -102,11 +132,16 @@ export async function crimeRoutes(app: FastifyInstance) {
         0.0025 * skillValue +
         0.015 * (character.tier - 1);
 
+      const inexperiencePenalty = Math.max(0, 25 - skillValue) * 0.006;
+
+      successChance -= inexperiencePenalty;
+
       if (character.status === "CRITICAL") {
         successChance -= 0.15;
       }
 
-      successChance = Math.min(0.95, Math.max(0.35, successChance));
+      successChance = Math.min(0.85, Math.max(0.30, successChance));
+
       const success = Math.random() < successChance;
 
       let cashReward = 0;
@@ -115,10 +150,17 @@ export async function crimeRoutes(app: FastifyInstance) {
       let smugglingXP = 0;
       let rxpGain = 0;
       let tierUp = false;
+      let hpDamage = 0;
+      let jailed = false;
 
       if (success) {
+
+        const variance = 0.75 + Math.random() * 0.5;
+
         cashReward = Math.round(
-          def.baseCash * (1 + 0.05 * (character.tier - 1))
+          def.baseCash *
+          variance *
+          (1 + 0.05 * (character.tier - 1))
         );
 
         if (Math.random() < def.baseLeadDropChance) {
@@ -141,8 +183,52 @@ export async function crimeRoutes(app: FastifyInstance) {
           smugglingXP = computeSmugglingXP(cashReward);
         }
 
-        const baseRXP = computeRXP(cashReward);
-        rxpGain = Math.round(baseRXP * getRXPMultiplier(character.tier));
+        rxpGain = computeRXP(cashReward);
+
+      } else {
+
+        leadReward = Math.floor(Math.random() * 5) + 2;
+
+        hpDamage = Math.floor(Math.random() * 9) + 6 + character.tier;
+
+        await applyResourceDelta(app.prisma, character.id, {
+          lead: leadReward
+        });
+
+        const newHP = Math.max(0, character.hp - hpDamage);
+
+        let newStatus: "ACTIVE" | "CRITICAL" | "DEAD" = character.status;
+
+        if (newHP <= 150 && newHP > 0) newStatus = "CRITICAL";
+
+        if (newHP === 0) newStatus = "DEAD";
+
+        await app.prisma.character.update({
+          where: { id: character.id },
+          data: { hp: newHP, status: newStatus }
+        });
+
+        const baseJail = def.cooldownSeconds;
+
+        const tierFactor = character.tier * 5;
+
+        const jailTime =
+          Math.floor(baseJail * 0.5) +
+          Math.floor(Math.random() * baseJail) +
+          tierFactor;
+
+        if (Math.random() < 0.5) {
+
+          jailed = true;
+
+          await app.prisma.jailState.update({
+            where: { characterId: character.id },
+            data: {
+              jailRemainingSeconds: jailTime,
+              lastUpdatedAt: new Date()
+            }
+          });
+        }
       }
 
       await app.prisma.$transaction(async (tx) => {
@@ -162,7 +248,9 @@ export async function crimeRoutes(app: FastifyInstance) {
         }
 
         if (rxpGain > 0) {
+
           let newRXP = character.rxp + rxpGain;
+
           let newTier = character.tier;
 
           while (
@@ -198,6 +286,49 @@ export async function crimeRoutes(app: FastifyInstance) {
           where: { id: character.id },
           data: { lastCrimeAt: new Date() }
         });
+
+      });
+
+      await app.prisma.crimeCooldown.upsert({
+        where: { characterId: character.id },
+        update: {
+          crimeType,
+          lastUsedAt: new Date()
+        },
+        create: {
+          characterId: character.id,
+          crimeType,
+          lastUsedAt: new Date()
+        }
+      });
+
+      // ===== SOCKET EVENTS =====
+
+      const updatedCharacter = await app.prisma.character.findUnique({
+  where: { id: character.id },
+  select: {
+    cash: true,
+    lead: true
+  }
+});
+
+await emitStateUpdate({
+  characterId: character.id,
+  cash: updatedCharacter?.cash,
+  lead: updatedCharacter?.lead
+});
+
+      await emitCrimeResult({
+        characterId: character.id,
+        success,
+        cashReward,
+        leadReward,
+        shootingXP,
+        smugglingXP,
+        rxpGain,
+        tierUp,
+        hpDamage,
+        jailed
       });
 
       return {
@@ -207,8 +338,15 @@ export async function crimeRoutes(app: FastifyInstance) {
         shootingXP,
         smugglingXP,
         rxpGain,
-        tierUp
+        tierUp,
+        hpDamage,
+        jailed,
+        cooldownRemainingSeconds: def.cooldownSeconds
       };
+
     }
   );
+
+  // HISTORY ROUTES UNCHANGED BELOW
+
 }

@@ -1,0 +1,75 @@
+import { FastifyInstance } from "fastify";
+import { CrimeDefinitions } from "../game/crimeDefinitions";
+
+export async function stateRoutes(app: FastifyInstance) {
+  app.get(
+    "/state/sync",
+    { preHandler: app.authenticate },
+    async (req: any, reply) => {
+      const accountId = req.user.accountId;
+
+      const character = await app.prisma.character.findFirst({
+        where: {
+          accountId,
+          status: { in: ["ACTIVE", "CRITICAL"] }
+        },
+        include: {
+          energy: true,
+          skills: true,
+          jail: true,
+          cooldown: true
+        }
+      });
+
+      if (!character) {
+        return reply.code(404).send({ error: "No active character" });
+      }
+
+      let cooldownRemaining = 0;
+
+      if (character.cooldown) {
+        const lastUsed = new Date(character.cooldown.lastUsedAt).getTime();
+        const lastCrimeType = character.cooldown.crimeType;
+        const lastDef =
+          CrimeDefinitions[lastCrimeType as keyof typeof CrimeDefinitions];
+
+        if (lastDef) {
+          const secondsSince = (Date.now() - lastUsed) / 1000;
+          cooldownRemaining = Math.max(
+            0,
+            Math.ceil(lastDef.cooldownSeconds - secondsSince)
+          );
+        }
+      }
+
+      return {
+        character: {
+          id: character.id,
+          nickname: character.nickname,
+          tier: character.tier,
+          hp: character.hp,
+          notoriety: character.notoriety,
+          status: character.status,
+          rxp: character.rxp
+        },
+        resources: {
+          cash: character.cash,
+          lead: character.lead,
+          energy: character.energy?.energy ?? 0
+        },
+        skills: {
+          shooting: character.skills?.shooting ?? 0,
+          smuggling: character.skills?.smuggling ?? 0,
+          investigation: character.skills?.investigation ?? 0,
+          jailXp: character.skills?.jailXp ?? 0
+        },
+        jail: {
+          remaining: character.jail?.jailRemainingSeconds ?? 0
+        },
+        cooldown: {
+          remaining: cooldownRemaining
+        }
+      };
+    }
+  );
+}

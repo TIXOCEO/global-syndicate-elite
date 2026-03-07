@@ -7,7 +7,7 @@ interface CharacterState {
   hp: number;
   notoriety: number;
   status: string | null;
-
+  rxp: number;
   setCharacter: (c: Partial<CharacterState>) => void;
   clearCharacter: () => void;
 }
@@ -19,6 +19,7 @@ export const useCharacterStore = create<CharacterState>((set) => ({
   hp: 100,
   notoriety: 0,
   status: null,
+  rxp: 0,
 
   setCharacter: (c) =>
     set((state) => ({
@@ -34,5 +35,6 @@ export const useCharacterStore = create<CharacterState>((set) => ({
       hp: 100,
       notoriety: 0,
       status: null,
+      rxp: 0,
     }),
 }));
