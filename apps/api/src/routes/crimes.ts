@@ -23,7 +23,6 @@ function requiredRXPForTier(t: number) {
 }
 
 export async function crimeRoutes(app: FastifyInstance) {
-
   app.post(
     "/crimes/commit",
     { preHandler: app.authenticate },
@@ -32,7 +31,6 @@ export async function crimeRoutes(app: FastifyInstance) {
       const accountId = req.user.accountId;
 
       const lastCall = rateLimitMap.get(accountId);
-
       const now = Date.now();
 
       if (lastCall && now - lastCall < 2000) {
@@ -76,6 +74,34 @@ export async function crimeRoutes(app: FastifyInstance) {
 
       if ((character.jail?.jailRemainingSeconds ?? 0) > 0) {
         return reply.code(403).send({ error: "Character is jailed" });
+      }
+
+      // GLOBAL COOLDOWN CHECK
+      if (character.cooldown) {
+
+        const lastUsed = new Date(character.cooldown.lastUsedAt).getTime();
+        const lastCrimeType = character.cooldown.crimeType;
+
+        const lastDef =
+          CrimeDefinitions[lastCrimeType as keyof typeof CrimeDefinitions];
+
+        if (lastDef) {
+
+          const cooldownSeconds = lastDef.cooldownSeconds;
+
+          const secondsSince = (Date.now() - lastUsed) / 1000;
+
+          if (secondsSince < cooldownSeconds) {
+
+            return reply.code(429).send({
+              error: "Crime on cooldown",
+              cooldownRemainingSeconds: Math.ceil(
+                cooldownSeconds - secondsSince
+              )
+            });
+
+          }
+        }
       }
 
       const currentEnergy = character.energy?.energy ?? 0;
@@ -182,6 +208,20 @@ export async function crimeRoutes(app: FastifyInstance) {
 
       }
 
+      // SAVE COOLDOWN
+      await app.prisma.crimeCooldown.upsert({
+        where: { characterId: character.id },
+        update: {
+          crimeType,
+          lastUsedAt: new Date()
+        },
+        create: {
+          characterId: character.id,
+          crimeType,
+          lastUsedAt: new Date()
+        }
+      });
+
       await emitCrimeResult({
         characterId: character.id,
         success,
@@ -212,5 +252,4 @@ export async function crimeRoutes(app: FastifyInstance) {
 
     }
   );
-
 }

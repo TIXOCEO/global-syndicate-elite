@@ -1,4 +1,5 @@
 "use client";
+
 import { useResourceStore } from "@/stores/resourceStore";
 import { useCharacterStore } from "@/stores/characterStore";
 import { apiFetch } from "@/lib/apiClient";
@@ -20,6 +21,7 @@ export default function GlobalHUD() {
   }
 
   async function hydrateHUD() {
+
     try {
 
       const sync = await apiFetch("/api/state/sync");
@@ -40,38 +42,35 @@ export default function GlobalHUD() {
       });
 
     } catch (e) {
+
       console.error("HUD hydration failed", e);
+
     }
+
   }
 
   useEffect(() => {
 
     hydrateHUD();
 
-    const interval = setInterval(() => {
-      hydrateHUD();
-    }, 15000);
-
+    // REALTIME RESOURCE UPDATES
     socket.on("state_update", (payload: any) => {
 
-      if (payload.cash !== undefined || payload.lead !== undefined) {
-
-        setResources({
-          cash: payload.cash ?? cash,
-          lead: payload.lead ?? lead
-        });
-
-      }
+      setResources({
+        cash: payload.cash,
+        lead: payload.lead
+      });
 
     });
 
+    // CRIME RESULT → refresh HUD
     socket.on("crime_result", () => {
+
       hydrateHUD();
+
     });
 
     return () => {
-
-      clearInterval(interval);
 
       socket.off("state_update");
       socket.off("crime_result");
@@ -93,10 +92,8 @@ export default function GlobalHUD() {
             <div className="font-bold text-[#C6A756]">GSE</div>
 
             <div className="flex gap-4 text-zinc-300">
-
               <span>$ {cash}</span>
               <span>Lead {lead}</span>
-
             </div>
 
           </div>
@@ -106,27 +103,23 @@ export default function GlobalHUD() {
             <span className="w-6">HP</span>
 
             <div className="flex-1 h-2 bg-zinc-800 rounded overflow-hidden">
-
               <div
                 className="h-full bg-[#C6A756] transition-all duration-500"
                 style={{ width: `${hpPercent}%` }}
               />
-
             </div>
 
             <span className="w-10 text-right">{hp}</span>
 
             <span className="mx-2 text-zinc-500">|</span>
 
-            <span>⚡</span>
+            <span>⚡ </span>
 
             <div className="flex-1 h-2 bg-zinc-800 rounded overflow-hidden">
-
               <div
                 className={`h-full transition-all duration-500 ${getEnergyColor()}`}
                 style={{ width: `${energyPercent}%` }}
               />
-
             </div>
 
             <span className="w-8 text-right">{energy}</span>
@@ -140,4 +133,5 @@ export default function GlobalHUD() {
     </div>
 
   );
+
 }
