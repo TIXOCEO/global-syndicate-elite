@@ -61,27 +61,19 @@ async function jailTick() {
         });
     }
 }
+/*
+Lead decay system
+
+Old system drained lead every minute.
+New system drains lead slowly:
+1 lead every 3 hours.
+*/
 async function leadDecayTick() {
-    const now = new Date();
     const characters = await prisma.character.findMany({
-        where: { lead: { gt: 0 } },
-        include: { jail: true }
+        where: { lead: { gt: 0 } }
     });
     for (const char of characters) {
-        let decay = 1;
-        decay += Math.floor(char.lead / 100);
-        if ((char.jail?.jailRemainingSeconds ?? 0) > 0) {
-            decay += 1;
-        }
-        if (char.lastCrimeAt) {
-            const minutesSinceCrime = (now.getTime() - new Date(char.lastCrimeAt).getTime()) / 60000;
-            if (minutesSinceCrime > 5) {
-                decay += Math.floor(minutesSinceCrime / 5);
-            }
-        }
-        decay -= Math.floor(char.tier / 3);
-        decay = Math.max(1, decay);
-        const newLead = Math.max(0, char.lead - decay);
+        const newLead = Math.max(0, char.lead - 1);
         if (newLead !== char.lead) {
             await prisma.character.update({
                 where: { id: char.id },
@@ -92,11 +84,15 @@ async function leadDecayTick() {
 }
 async function start() {
     await prisma.$connect();
+    // energy + jail tick every minute
     setInterval(async () => {
         await energyRegenTick();
         await jailTick();
-        await leadDecayTick();
     }, 60_000);
+    // lead decay every 3 hours
+    setInterval(async () => {
+        await leadDecayTick();
+    }, 3 * 60 * 60 * 1000);
     console.log("Worker active (energy + jail + lead)");
 }
 start();
