@@ -20,6 +20,13 @@ const pool = new pg_1.Pool({
 });
 const adapter = new adapter_pg_1.PrismaPg(pool);
 const prisma = new client_1.PrismaClient({ adapter });
+const WS_BRIDGE_URL = process.env.WS_INTERNAL_URL ||
+    "http://127.0.0.1:5002/internal/state-update";
+const WS_FACTORY_EVENT = process.env.WS_FACTORY_EVENT ||
+    "http://127.0.0.1:5002/internal/factory-production";
+/*
+Energy regeneration
+*/
 async function energyRegenTick() {
     const now = new Date();
     const energies = await prisma.energy.findMany();
@@ -41,6 +48,9 @@ async function energyRegenTick() {
         });
     }
 }
+/*
+Jail countdown
+*/
 async function jailTick() {
     const now = new Date();
     const jailed = await prisma.jailState.findMany({
@@ -63,10 +73,7 @@ async function jailTick() {
 }
 /*
 Lead decay system
-
-Old system drained lead every minute.
-New system drains lead slowly:
-1 lead every 3 hours.
+1 lead every 3 hours
 */
 async function leadDecayTick() {
     const characters = await prisma.character.findMany({
@@ -82,6 +89,89 @@ async function leadDecayTick() {
         }
     }
 }
+/*
+Factory bullet production
+Runs every 60 seconds
+Supports fractional production
+*/
+async function factoryProductionTick() {
+    const factories = await prisma.bulletFactory.findMany({
+        include: {
+            character: true
+        }
+    });
+    for (const factory of factories) {
+        const character = factory.character;
+        const productionPerMinute = factory.productionRatePerHour / 60;
+        let progress = factory.productionProgress + productionPerMinute;
+        const bulletsProduced = Math.floor(progress);
+        if (bulletsProduced <= 0) {
+            await prisma.bulletFactory.update({
+                where: { id: factory.id },
+                data: {
+                    productionProgress: progress
+                }
+            });
+            continue;
+        }
+        const maxByLead = character.lead;
+        const maxByCash = Math.floor(character.cash / 2);
+        const allowedProduction = Math.min(bulletsProduced, maxByLead, maxByCash);
+        if (allowedProduction <= 0) {
+            console.log(`Factory paused for ${character.nickname} (insufficient resources)`);
+            continue;
+        }
+        const cashCost = allowedProduction * 2;
+        const result = await prisma.$transaction(async (tx) => {
+            const updatedCharacter = await tx.character.update({
+                where: { id: character.id },
+                data: {
+                    bullets: { increment: allowedProduction },
+                    lead: { decrement: allowedProduction },
+                    cash: { decrement: cashCost }
+                }
+            });
+            await tx.bulletFactory.update({
+                where: { id: factory.id },
+                data: {
+                    productionProgress: progress - allowedProduction,
+                    lastProductionAt: new Date()
+                }
+            });
+            return updatedCharacter;
+        });
+        console.log(`Factory production: ${character.nickname} +${allowedProduction} bullets`);
+        try {
+            await fetch(WS_BRIDGE_URL, {
+                method: "POST",
+                headers: {
+                    "content-type": "application/json"
+                },
+                body: JSON.stringify({
+                    characterId: character.id,
+                    bullets: result.bullets,
+                    lead: result.lead,
+                    cash: result.cash
+                })
+            });
+            await fetch(WS_FACTORY_EVENT, {
+                method: "POST",
+                headers: {
+                    "content-type": "application/json"
+                },
+                body: JSON.stringify({
+                    characterId: character.id,
+                    bulletsAdded: allowedProduction,
+                    leadConsumed: allowedProduction,
+                    cashConsumed: cashCost
+                })
+            });
+        }
+        catch (err) {
+            console.error("WS update failed", err);
+        }
+    }
+}
 async function start() {
     await prisma.$connect();
     // energy + jail tick every minute
@@ -89,17 +179,26 @@ async function start() {
         await energyRegenTick();
         await jailTick();
     }, 60_000);
+    // factory production every minute
+    setInterval(async () => {
+        await factoryProductionTick();
+    }, 60_000);
     // lead decay every 3 hours
     setInterval(async () => {
         await leadDecayTick();
     }, 3 * 60 * 60 * 1000);
-    console.log("Worker active (energy + jail + lead)");
+    console.log("Worker active (energy + jail + lead + factories)");
 }
 start();
 const server = http_1.default.createServer((req, res) => {
     if (req.url === "/health/worker") {
-        res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ status: "ok", service: "worker" }));
+        res.writeHead(200, {
+            "content-type": "application/json"
+        });
+        res.end(JSON.stringify({
+            status: "ok",
+            service: "worker"
+        }));
         return;
     }
     res.writeHead(404);

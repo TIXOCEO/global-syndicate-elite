@@ -30,11 +30,13 @@ export async function stateRoutes(app: FastifyInstance) {
       if (character.cooldown) {
         const lastUsed = new Date(character.cooldown.lastUsedAt).getTime();
         const lastCrimeType = character.cooldown.crimeType;
+
         const lastDef =
           CrimeDefinitions[lastCrimeType as keyof typeof CrimeDefinitions];
 
         if (lastDef) {
           const secondsSince = (Date.now() - lastUsed) / 1000;
+
           cooldownRemaining = Math.max(
             0,
             Math.ceil(lastDef.cooldownSeconds - secondsSince)
@@ -52,20 +54,25 @@ export async function stateRoutes(app: FastifyInstance) {
           status: character.status,
           rxp: character.rxp
         },
+
         resources: {
           cash: character.cash,
           lead: character.lead,
+          bullets: character.bullets,
           energy: character.energy?.energy ?? 0
         },
+
         skills: {
           shooting: character.skills?.shooting ?? 0,
           smuggling: character.skills?.smuggling ?? 0,
           investigation: character.skills?.investigation ?? 0,
           jailXp: character.skills?.jailXp ?? 0
         },
+
         jail: {
           remaining: character.jail?.jailRemainingSeconds ?? 0
         },
+
         cooldown: {
           remaining: cooldownRemaining
         }

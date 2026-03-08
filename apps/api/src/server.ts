@@ -13,10 +13,12 @@ import { characterRoutes } from "./routes/character";
 import { resourceRoutes } from "./routes/resources";
 import { crimeRoutes } from "./routes/crimes";
 import { stateRoutes } from "./routes/state";
+import { factoryRoutes } from "./routes/factories";
 
 const app = Fastify({ logger: true });
 
 async function bootstrap() {
+
   await app.register(cors, {
     origin: true,
     credentials: true
@@ -37,6 +39,8 @@ async function bootstrap() {
   await app.register(stateRoutes);
   await app.register(resourceRoutes);
   await app.register(crimeRoutes);
+
+  await app.register(factoryRoutes);
 
   app.get("/health", async () => ({ status: "ok" }));
 

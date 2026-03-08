@@ -23,6 +23,13 @@ enum CrimeType {
   WAREHOUSE_RAID
 }
 
+enum FactoryType {
+  MINI
+  SMALL
+  MEDIUM
+  LARGE
+}
+
 model Account {
   id              String   @id @default(uuid())
   email           String   @unique
@@ -57,7 +64,24 @@ model Character {
   jail            JailState?
   cooldown        CrimeCooldown?
   crimeLogs       CrimeLog[]
+  factories       BulletFactory[]
+
   @@index([accountId])
+}
+
+model BulletFactory {
+  id                     String      @id @default(uuid())
+  characterId            String
+  character              Character   @relation(fields: [characterId], references: [id])
+  factoryType            FactoryType
+  productionRatePerHour  Int
+
+  productionProgress     Float       @default(0)
+  lastProductionAt       DateTime    @default(now())
+
+  createdAt              DateTime    @default(now())
+
+  @@index([characterId])
 }
 
 model Skills {
@@ -105,5 +129,6 @@ model CrimeCooldown {
   character   Character @relation(fields: [characterId], references: [id])
   crimeType   String
   lastUsedAt  DateTime
+
   @@index([characterId])
 }
