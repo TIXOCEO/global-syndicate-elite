@@ -45,3 +45,7 @@ dump.pm2
 # Coverage
 coverage/
 **/coverage/
+*.tar.gz
+*.zip
+*.snapshot
+*.backup
