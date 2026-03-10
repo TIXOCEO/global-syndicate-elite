@@ -44,6 +44,21 @@ enum HitlistStatus {
   CANCELLED
 }
 
+/*
+NEW — Sprint 10 Countries
+*/
+model Country {
+  id             String     @id
+  name           String
+  code           String     @unique
+  borderSecurity Float      @default(1)
+  createdAt      DateTime   @default(now())
+
+  characters     Character[]
+
+  @@index([code])
+}
+
 model Account {
   id              String        @id @default(uuid())
   email           String        @unique
@@ -71,13 +86,20 @@ model Character {
   bullets             Int             @default(0)
   injurySeverity      Float           @default(0)
   status              CharacterStatus @default(ACTIVE)
-  currentCountryId    String          @default("GLOBAL")
+
+  /*
+  Country location
+  */
+  currentCountryId    String          @default("NL")
+  country             Country         @relation(fields: [currentCountryId], references: [id])
+
   createdAt           DateTime        @default(now())
   diedAt              DateTime?
   lastCrimeAt         DateTime?
   protectionUntil     DateTime?
   recoveryUntil       DateTime?
   medkitCooldownUntil DateTime?
+
   skills              Skills?
   energy              Energy?
   jail                JailState?
@@ -85,18 +107,21 @@ model Character {
   crimeLogs           CrimeLog[]
   factories           BulletFactory[]
   items               CharacterItem[]
+
   combatLogsAttacker  CombatLog[]     @relation("CombatAttacker")
   combatLogsDefender  CombatLog[]     @relation("CombatDefender")
+
   knownLocationsViewed KnownLocation[] @relation("IntelViewer")
   knownLocationsTarget KnownLocation[] @relation("IntelTarget")
 
   /*
-  NEW — Hitlist relations
+  Hitlist relations
   */
   hitlistsCreated HitlistContract[] @relation("HitlistCreator")
   hitlistsTarget  HitlistContract[] @relation("HitlistTarget")
 
   @@index([accountId])
+  @@index([currentCountryId])
 }
 
 model KnownLocation {
@@ -204,9 +229,6 @@ model CombatLog {
   rxp           Int
   notorietyGain Int
 
-  /*
-  NEW — Hitlist contract link
-  */
   hitlistContractId String?
   hitlistContract   HitlistContract? @relation(fields: [hitlistContractId], references: [id])
 
@@ -230,9 +252,6 @@ model HitlistContract {
   createdAt            DateTime      @default(now())
   completedAt          DateTime?
 
-  /*
-  REQUIRED — reverse relation for CombatLog
-  */
   combatLogs           CombatLog[]
 
   @@index([targetCharacterId])

@@ -40,12 +40,11 @@ export default function HitlistPage() {
       setContracts(res.contracts || []);
 
     } catch (err) {
-
       console.error(err);
-
     }
 
     setLoading(false);
+
   }
 
   useEffect(() => {
@@ -85,6 +84,7 @@ export default function HitlistPage() {
     }
 
     setSubmitting(false);
+
   }
 
   return (
@@ -94,93 +94,6 @@ export default function HitlistPage() {
         <Target size={24} />
         Hitlist Contracts
       </h1>
-
-      {/* CREATE CONTRACT */}
-
-      <div className="bg-[#111827] border border-[#C6A756] rounded-xl p-5 space-y-4">
-
-        <h2 className="text-lg font-semibold text-[#C6A756]">
-          Create Contract
-        </h2>
-
-        <div className="grid md:grid-cols-2 gap-4">
-
-          <div>
-            <label className="text-sm text-zinc-400">
-              Target Character ID
-            </label>
-
-            <input
-              value={targetCharacterId}
-              onChange={(e) =>
-                setTargetCharacterId(e.target.value)
-              }
-              className="w-full mt-1 bg-black border border-zinc-700 rounded px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-zinc-400">
-              Reward Cash
-            </label>
-
-            <input
-              type="number"
-              value={rewardCash}
-              onChange={(e) =>
-                setRewardCash(Number(e.target.value))
-              }
-              className="w-full mt-1 bg-black border border-zinc-700 rounded px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-zinc-400">
-              Deadline (hours)
-            </label>
-
-            <input
-              type="number"
-              value={deadlineHours}
-              onChange={(e) =>
-                setDeadlineHours(Number(e.target.value))
-              }
-              className="w-full mt-1 bg-black border border-zinc-700 rounded px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-zinc-400">
-              Minimum Bullets
-            </label>
-
-            <input
-              type="number"
-              value={minBullets}
-              onChange={(e) =>
-                setMinBullets(Number(e.target.value))
-              }
-              className="w-full mt-1 bg-black border border-zinc-700 rounded px-3 py-2 text-sm"
-            />
-          </div>
-
-        </div>
-
-        <button
-          onClick={createContract}
-          disabled={submitting}
-          className="bg-[#C6A756] text-black px-4 py-2 rounded text-sm font-semibold hover:opacity-90"
-        >
-          {submitting ? "Creating..." : "Create Contract"}
-        </button>
-
-        {message && (
-          <div className="text-sm text-zinc-300">
-            {message}
-          </div>
-        )}
-
-      </div>
 
       {/* ACTIVE CONTRACTS */}
 
@@ -280,10 +193,69 @@ export default function HitlistPage() {
 
                 </div>
               );
+
             })}
+
           </div>
 
         )}
+
+      </div>
+
+      {/* CREATE CONTRACT (MOVED BELOW LIST) */}
+
+      <div className="bg-[#111827] border border-[#C6A756] rounded-xl p-5 space-y-4">
+
+        <h2 className="text-lg font-semibold text-[#C6A756]">
+          Create Contract
+        </h2>
+
+        <div className="grid md:grid-cols-2 gap-4">
+
+          <input
+            placeholder="Target Character ID"
+            value={targetCharacterId}
+            onChange={(e) => setTargetCharacterId(e.target.value)}
+            className="bg-black border border-zinc-700 rounded px-3 py-2 text-sm"
+          />
+
+          <input
+            type="number"
+            value={rewardCash}
+            onChange={(e) => setRewardCash(Number(e.target.value))}
+            className="bg-black border border-zinc-700 rounded px-3 py-2 text-sm"
+          />
+
+          <input
+            type="number"
+            value={deadlineHours}
+            onChange={(e) => setDeadlineHours(Number(e.target.value))}
+            className="bg-black border border-zinc-700 rounded px-3 py-2 text-sm"
+          />
+
+          <input
+            type="number"
+            value={minBullets}
+            onChange={(e) => setMinBullets(Number(e.target.value))}
+            className="bg-black border border-zinc-700 rounded px-3 py-2 text-sm"
+          />
+
+        </div>
+
+        <button
+          onClick={createContract}
+          disabled={submitting}
+          className="bg-[#C6A756] text-black px-4 py-2 rounded text-sm font-semibold"
+        >
+          {submitting ? "Creating..." : "Create Contract"}
+        </button>
+
+        {message && (
+          <div className="text-sm text-zinc-300">
+            {message}
+          </div>
+        )}
+
       </div>
 
     </div>
