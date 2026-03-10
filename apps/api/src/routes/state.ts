@@ -47,7 +47,6 @@ export async function stateRoutes(app: FastifyInstance) {
           );
 
         }
-
       }
 
       const recoveryRemaining =
@@ -58,6 +57,11 @@ export async function stateRoutes(app: FastifyInstance) {
       const medkitCooldownRemaining =
         character.medkitCooldownUntil
           ? Math.max(0, character.medkitCooldownUntil.getTime() - Date.now())
+          : 0;
+
+      const travelCooldownRemaining =
+        character.travelCooldownUntil
+          ? Math.max(0, character.travelCooldownUntil.getTime() - Date.now())
           : 0;
 
       return {
@@ -74,7 +78,8 @@ export async function stateRoutes(app: FastifyInstance) {
           recoveryUntil: character.recoveryUntil?.getTime() ?? null,
           recoveryRemaining,
           medkitCooldownUntil: character.medkitCooldownUntil?.getTime() ?? null,
-          medkitCooldownRemaining
+          medkitCooldownRemaining,
+          currentCountryId: character.currentCountryId
         },
 
         resources: {
@@ -98,6 +103,11 @@ export async function stateRoutes(app: FastifyInstance) {
 
         cooldown: {
           remaining: cooldownRemaining
+        },
+
+        travel: {
+          cooldownUntil: character.travelCooldownUntil?.getTime() ?? null,
+          remaining: travelCooldownRemaining
         }
 
       };

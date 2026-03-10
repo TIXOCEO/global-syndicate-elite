@@ -60,6 +60,14 @@ app.post("/internal/hitlist-expired", async (req: FastifyRequest) => {
   return { ok: true };
 });
 
+/*
+Sprint 10 — Travel events
+*/
+
+app.post("/internal/travel-completed", async (req: FastifyRequest) => {
+  return { ok: true };
+});
+
 app.get("/health/ws", async () => {
   return {
     status: "ok",

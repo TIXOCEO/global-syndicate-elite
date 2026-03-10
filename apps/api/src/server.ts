@@ -5,6 +5,7 @@ import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import prismaPlugin from "./plugins/prisma";
 import authPlugin from "./plugins/auth";
+
 import { authRoutes } from "./routes/auth";
 import { accountRoutes } from "./routes/account";
 import { characterRoutes } from "./routes/character";
@@ -28,8 +29,11 @@ import { hitlistRoutes } from "./routes/hitlist";
 
 /* Sprint 10 */
 import { worldRoutes } from "./routes/world";
+import { travelRoutes } from "./routes/travel";
 
-const app = Fastify({ logger: true });
+const app = Fastify({
+  logger: true
+});
 
 async function bootstrap() {
 
@@ -70,6 +74,7 @@ async function bootstrap() {
 
   /* Sprint 10 */
   await app.register(worldRoutes);
+  await app.register(travelRoutes);
 
   await app.register(adminRoutes);
 

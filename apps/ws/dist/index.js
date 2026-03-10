@@ -40,6 +40,12 @@ app.post("/internal/hitlist-cancelled", async (req) => {
 app.post("/internal/hitlist-expired", async (req) => {
     return { ok: true };
 });
+/*
+Sprint 10 — Travel events
+*/
+app.post("/internal/travel-completed", async (req) => {
+    return { ok: true };
+});
 app.get("/health/ws", async () => {
     return {
         status: "ok",

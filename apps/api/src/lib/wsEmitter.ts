@@ -152,3 +152,18 @@ export async function emitHitlistExpired(payload: any) {
     console.error("WS hitlist expired emit failed", err);
   }
 }
+
+/*
+SPRINT 10 — TRAVEL EVENTS
+*/
+export async function emitTravelCompleted(payload: any) {
+  try {
+    await fetch(`${WS_URL}/internal/travel-completed`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error("WS travel emit failed", err);
+  }
+}
