@@ -49,3 +49,6 @@ coverage/
 *.zip
 *.snapshot
 *.backup
+*.tar.gz
+*.zip
+*.backup
