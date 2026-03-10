@@ -303,19 +303,24 @@ async function passiveHpRegenTick() {
     }
 }
 /*
-NEW — Intel expiration cleanup
+Intel expiration cleanup
 */
 async function intelExpiryTick() {
-    const now = new Date();
-    const result = await prisma.knownLocation.deleteMany({
-        where: {
-            expiresAt: {
-                lt: now
+    try {
+        const now = new Date();
+        const result = await prisma.knownLocation.deleteMany({
+            where: {
+                expiresAt: {
+                    lt: now
+                }
             }
+        });
+        if (result.count > 0) {
+            console.log(`Expired intel cleaned: ${result.count}`);
         }
-    });
-    if (result.count > 0) {
-        console.log(`Expired intel cleaned: ${result.count}`);
+    }
+    catch (err) {
+        console.error("Intel expiry cleanup failed", err);
     }
 }
 async function start() {

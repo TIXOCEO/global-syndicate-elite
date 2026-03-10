@@ -65,10 +65,13 @@ const categories: Category[] = [
     icon: Swords,
     items: [
       { label: "Attack", href: "/attack", icon: Swords },
+
+      /* NEW — Sprint 8 Intel System */
+      { label: "Intel", href: "/intel", icon: Swords },
+
       { label: "Hospital", href: "/hospital", icon: HeartPulse },
 
-      /* NEW JAIL ENTRY */
-
+      /* Jail */
       { label: "Jail", href: "/jail", icon: Columns3 }
     ]
   },
@@ -84,7 +87,6 @@ const categories: Category[] = [
 ];
 
 export default function BottomNav() {
-
   const pathname = usePathname();
   const router = useRouter();
 
@@ -95,25 +97,18 @@ export default function BottomNav() {
   /*
   Jail redirect guard
   */
-
   useEffect(() => {
-
     async function checkJail() {
-
       try {
-
         const res = await apiFetch("/api/state/sync");
 
         if (res?.jail?.remaining > 0) {
-
           if (pathname !== "/jail") {
             router.replace("/jail");
           }
-
         }
 
       } catch {}
-
     }
 
     checkJail();
@@ -125,26 +120,22 @@ export default function BottomNav() {
   }, [pathname, router]);
 
   function toggleMenu(key: string) {
-
     if (open === key) {
       setOpen(null);
     } else {
       setOpen(key);
     }
-
   }
 
   useEffect(() => {
 
     function handleClick(e: MouseEvent) {
-
       if (
         panelRef.current &&
         !panelRef.current.contains(e.target as Node)
       ) {
         setOpen(null);
       }
-
     }
 
     document.addEventListener("mousedown", handleClick);
@@ -165,23 +156,18 @@ export default function BottomNav() {
             : "translate-y-10 opacity-0 pointer-events-none"
         }`}
       >
-
         {activeCategory && (
-
           <div ref={panelRef} className="max-w-5xl mx-auto px-4">
-
             <div className="bg-[#111827] border border-[#C6A756] rounded-xl shadow-2xl overflow-hidden">
-
+              
               <div className="px-4 py-3 border-b border-zinc-700 text-sm font-semibold text-[#C6A756]">
                 {activeCategory.label}
               </div>
 
               <div className="flex flex-col">
-
                 {activeCategory.items.map((item) => {
 
                   const active = pathname === item.href;
-
                   const Icon = item.icon;
 
                   return (
@@ -195,33 +181,23 @@ export default function BottomNav() {
                           : "text-zinc-300 hover:bg-black/30"
                       }`}
                     >
-
                       <Icon size={18} />
-
                       {item.label}
-
                     </Link>
                   );
+
                 })}
-
               </div>
-
             </div>
-
           </div>
-
         )}
-
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 border-t border-[#C6A756] bg-[#0B1220] z-50">
-
         <div className="max-w-5xl mx-auto flex justify-between px-4 py-3 text-xs">
-
           {categories.map((cat) => {
 
             const active = open === cat.key;
-
             const Icon = cat.icon;
 
             return (
@@ -232,18 +208,13 @@ export default function BottomNav() {
                   active ? "text-[#C6A756]" : "text-zinc-400"
                 }`}
               >
-
                 <Icon size={20} />
-
                 {cat.label}
-
               </button>
             );
 
           })}
-
         </div>
-
       </div>
     </>
   );

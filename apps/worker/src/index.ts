@@ -94,7 +94,6 @@ async function jailTick() {
     /*
     Passive jail XP while incarcerated
     */
-
     try {
       await prisma.skills.update({
         where: { characterId: entry.characterId },
@@ -186,7 +185,6 @@ async function factoryProductionTick() {
           productionProgress: progress
         }
       });
-
       continue;
     }
 
@@ -209,7 +207,6 @@ async function factoryProductionTick() {
     const cashCost = allowedProduction * 2;
 
     const result = await prisma.$transaction(async (tx) => {
-
       const updatedCharacter =
         await tx.character.update({
           where: { id: character.id },
@@ -230,7 +227,6 @@ async function factoryProductionTick() {
       });
 
       return updatedCharacter;
-
     });
 
     console.log(
@@ -270,7 +266,6 @@ async function factoryProductionTick() {
 Recovery cleanup
 */
 async function recoveryStatusTick() {
-
   const now = new Date();
 
   const recoveringCharacters = await prisma.character.findMany({
@@ -291,7 +286,6 @@ async function recoveryStatusTick() {
     if (!character.recoveryUntil) continue;
 
     if (character.injurySeverity <= 0) {
-
       await prisma.character.update({
         where: { id: character.id },
         data: {
@@ -336,7 +330,6 @@ async function recoveryStatusTick() {
 Passive HP regeneration
 */
 async function passiveHpRegenTick() {
-
   const damagedCharacters = await prisma.character.findMany({
     where: {
       hp: { lt: 1000 },
@@ -377,24 +370,28 @@ async function passiveHpRegenTick() {
 }
 
 /*
-NEW — Intel expiration cleanup
+Intel expiration cleanup
 */
 async function intelExpiryTick() {
+  try {
 
-  const now = new Date();
+    const now = new Date();
 
-  const result = await prisma.knownLocation.deleteMany({
-    where: {
-      expiresAt: {
-        lt: now
+    const result = await prisma.knownLocation.deleteMany({
+      where: {
+        expiresAt: {
+          lt: now
+        }
       }
+    });
+
+    if (result.count > 0) {
+      console.log(`Expired intel cleaned: ${result.count}`);
     }
-  });
 
-  if (result.count > 0) {
-    console.log(`Expired intel cleaned: ${result.count}`);
+  } catch (err) {
+    console.error("Intel expiry cleanup failed", err);
   }
-
 }
 
 async function start() {
@@ -402,40 +399,30 @@ async function start() {
   await prisma.$connect();
 
   setInterval(async () => {
-
     await energyRegenTick();
     await jailTick();
     await factoryProductionTick();
     await recoveryStatusTick();
-
   }, 60_000);
 
   setInterval(async () => {
-
     await passiveHpRegenTick();
-
   }, 6 * 60 * 1000);
 
   setInterval(async () => {
-
     await leadDecayTick();
-
   }, 3 * 60 * 60 * 1000);
 
   /*
   Intel cleanup every 5 minutes
   */
-
   setInterval(async () => {
-
     await intelExpiryTick();
-
   }, 5 * 60 * 1000);
 
   console.log(
     "Worker active (energy + jail + lead + factories + recovery + intel cleanup)"
   );
-
 }
 
 start();
@@ -456,7 +443,6 @@ const server = http.createServer((req, res) => {
     );
 
     return;
-
   }
 
   res.writeHead(404);
@@ -467,7 +453,5 @@ const server = http.createServer((req, res) => {
 const port = Number(process.env.PORT ?? 5003);
 
 server.listen(port, "0.0.0.0", () => {
-
   console.log(`Worker running on port ${port}`);
-
 });
