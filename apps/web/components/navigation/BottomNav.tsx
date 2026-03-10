@@ -66,7 +66,10 @@ const categories: Category[] = [
     items: [
       { label: "Attack", href: "/attack", icon: Swords },
 
-      /* NEW — Sprint 8 Intel System */
+      /* Sprint 9 — Hitlist */
+      { label: "Hitlist", href: "/hitlist", icon: Swords },
+
+      /* Sprint 8 Intel */
       { label: "Intel", href: "/intel", icon: Swords },
 
       { label: "Hospital", href: "/hospital", icon: HeartPulse },
@@ -87,6 +90,7 @@ const categories: Category[] = [
 ];
 
 export default function BottomNav() {
+
   const pathname = usePathname();
   const router = useRouter();
 
@@ -97,9 +101,13 @@ export default function BottomNav() {
   /*
   Jail redirect guard
   */
+
   useEffect(() => {
+
     async function checkJail() {
+
       try {
+
         const res = await apiFetch("/api/state/sync");
 
         if (res?.jail?.remaining > 0) {
@@ -109,6 +117,7 @@ export default function BottomNav() {
         }
 
       } catch {}
+
     }
 
     checkJail();
@@ -120,22 +129,26 @@ export default function BottomNav() {
   }, [pathname, router]);
 
   function toggleMenu(key: string) {
+
     if (open === key) {
       setOpen(null);
     } else {
       setOpen(key);
     }
+
   }
 
   useEffect(() => {
 
     function handleClick(e: MouseEvent) {
+
       if (
         panelRef.current &&
         !panelRef.current.contains(e.target as Node)
       ) {
         setOpen(null);
       }
+
     }
 
     document.addEventListener("mousedown", handleClick);
@@ -159,11 +172,9 @@ export default function BottomNav() {
         {activeCategory && (
           <div ref={panelRef} className="max-w-5xl mx-auto px-4">
             <div className="bg-[#111827] border border-[#C6A756] rounded-xl shadow-2xl overflow-hidden">
-              
               <div className="px-4 py-3 border-b border-zinc-700 text-sm font-semibold text-[#C6A756]">
                 {activeCategory.label}
               </div>
-
               <div className="flex flex-col">
                 {activeCategory.items.map((item) => {
 

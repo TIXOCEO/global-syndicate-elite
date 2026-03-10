@@ -145,15 +145,18 @@ importers:
       bufferutil:
         specifier: ^4.0.1
         version: 4.1.0
+      fastify:
+        specifier: ^5.7.4
+        version: 5.7.4
       socket.io:
         specifier: ^4.8.3
-        version: 4.8.3(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+        version: 4.8.3
       utf-8-validate:
         specifier: ^5.0.2
         version: 5.0.10
     devDependencies:
       '@types/node':
-        specifier: ^20
+        specifier: ^20.19.35
         version: 20.19.35
       tsx:
         specifier: ^4.21.0
@@ -2415,7 +2418,7 @@ packages:
       '@socket.io/component-emitter': 3.1.2
       debug: 4.4.3
       engine.io-parser: 5.2.3
-      ws: 8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      ws: 8.18.3
       xmlhttprequest-ssl: 2.1.2
     transitivePeerDependencies:
       - bufferutil
@@ -2428,7 +2431,7 @@ packages:
     engines: {node: '>=10.0.0'}
     dev: false
 
-  /engine.io@6.6.5(bufferutil@4.1.0)(utf-8-validate@5.0.10):
+  /engine.io@6.6.5:
     resolution: {integrity: sha512-2RZdgEbXmp5+dVbRm0P7HQUImZpICccJy7rN7Tv+SFa55pH+lxnuw6/K1ZxxBfHoYpSkHLAO92oa8O4SwFXA2A==}
     engines: {node: '>=10.2.0'}
     dependencies:
@@ -2440,7 +2443,7 @@ packages:
       cors: 2.8.6
       debug: 4.4.3
       engine.io-parser: 5.2.3
-      ws: 8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -4752,11 +4755,11 @@ packages:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
     engines: {node: '>=14'}
 
-  /socket.io-adapter@2.5.6(bufferutil@4.1.0)(utf-8-validate@5.0.10):
+  /socket.io-adapter@2.5.6:
     resolution: {integrity: sha512-DkkO/dz7MGln0dHn5bmN3pPy+JmywNICWrJqVWiVOyvXjWQFIv9c2h24JrQLLFJ2aQVQf/Cvl1vblnd4r2apLQ==}
     dependencies:
       debug: 4.4.3
-      ws: 8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -4787,7 +4790,7 @@ packages:
       - supports-color
     dev: false
 
-  /socket.io@4.8.3(bufferutil@4.1.0)(utf-8-validate@5.0.10):
+  /socket.io@4.8.3:
     resolution: {integrity: sha512-2Dd78bqzzjE6KPkD5fHZmDAKRNe3J15q+YHDrIsy9WEkqttc7GY+kT9OBLSMaPbQaEd0x1BjcmtMtXkfpc+T5A==}
     engines: {node: '>=10.2.0'}
     dependencies:
@@ -4795,8 +4798,8 @@ packages:
       base64id: 2.0.0
       cors: 2.8.6
       debug: 4.4.3
-      engine.io: 6.6.5(bufferutil@4.1.0)(utf-8-validate@5.0.10)
-      socket.io-adapter: 2.5.6(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      engine.io: 6.6.5
+      socket.io-adapter: 2.5.6
       socket.io-parser: 4.2.5
     transitivePeerDependencies:
       - bufferutil
@@ -5253,7 +5256,7 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: true
 
-  /ws@8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10):
+  /ws@8.18.3:
     resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
@@ -5264,9 +5267,6 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
-    dependencies:
-      bufferutil: 4.1.0
-      utf-8-validate: 5.0.10
     dev: false
 
   /xmlhttprequest-ssl@2.1.2:
