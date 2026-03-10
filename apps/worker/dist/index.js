@@ -323,6 +323,42 @@ async function intelExpiryTick() {
         console.error("Intel expiry cleanup failed", err);
     }
 }
+/*
+NEW — Hitlist contract expiration
+*/
+async function hitlistExpiryTick() {
+    try {
+        const now = new Date();
+        const expiredContracts = await prisma.hitlistContract.findMany({
+            where: {
+                status: "ACTIVE",
+                deadline: {
+                    lt: now
+                }
+            }
+        });
+        for (const contract of expiredContracts) {
+            await prisma.$transaction(async (tx) => {
+                await tx.hitlistContract.update({
+                    where: { id: contract.id },
+                    data: {
+                        status: "EXPIRED"
+                    }
+                });
+                await tx.character.update({
+                    where: { id: contract.creatorCharacterId },
+                    data: {
+                        cash: { increment: contract.rewardCash }
+                    }
+                });
+            });
+            console.log(`Hitlist expired: ${contract.id}`);
+        }
+    }
+    catch (err) {
+        console.error("Hitlist expiry cleanup failed", err);
+    }
+}
 async function start() {
     await prisma.$connect();
     setInterval(async () => {
@@ -343,7 +379,13 @@ async function start() {
     setInterval(async () => {
         await intelExpiryTick();
     }, 5 * 60 * 1000);
-    console.log("Worker active (energy + jail + lead + factories + recovery + intel cleanup)");
+    /*
+    NEW — Hitlist cleanup every 5 minutes
+    */
+    setInterval(async () => {
+        await hitlistExpiryTick();
+    }, 5 * 60 * 1000);
+    console.log("Worker active (energy + jail + lead + factories + recovery + intel cleanup + hitlist expiry)");
 }
 start();
 const server = http_1.default.createServer((req, res) => {

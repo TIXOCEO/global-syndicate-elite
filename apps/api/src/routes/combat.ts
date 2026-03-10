@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+
 import {
   computeDamage,
   computeHitChance,
@@ -6,13 +7,16 @@ import {
   computeRXP,
   computeNotoriety
 } from "../game/combatEngine";
+
 import {
   calculateSeverity,
   calculateRecoveryHours
 } from "../game/injuryEngine";
+
 import {
   emitCombatResult,
-  emitStateUpdate
+  emitStateUpdate,
+  emitHitlistCompleted
 } from "../lib/wsEmitter";
 
 const combatRateLimit = new Map<string, number>();
@@ -22,12 +26,14 @@ function computeRecoveryCombatMult(severity: number) {
 }
 
 export async function combatRoutes(app: FastifyInstance) {
+
   app.post(
     "/combat/attack",
     { preHandler: app.authenticate },
     async (req: any, reply) => {
 
       const { targetCharacterId, bullets } = req.body;
+
       const accountId = req.user.accountId;
 
       const now = Date.now();
@@ -89,7 +95,9 @@ export async function combatRoutes(app: FastifyInstance) {
         return reply.code(404).send({ error: "Target not found" });
       }
 
-      /* NEW — Intel requirement */
+      /*
+      Intel requirement
+      */
 
       const intel = await app.prisma.knownLocation.findFirst({
         where: {
@@ -105,7 +113,9 @@ export async function combatRoutes(app: FastifyInstance) {
         });
       }
 
-      /* NEW — Same country validation */
+      /*
+      Same country validation
+      */
 
       if (attacker.currentCountryId !== defender.currentCountryId) {
         return reply.code(403).send({
@@ -183,16 +193,40 @@ export async function combatRoutes(app: FastifyInstance) {
       let recoveryUntil: Date | null = null;
 
       if (hit) {
+
         const recoveryHours =
           critical ? 24 : calculateRecoveryHours(severity);
 
         recoveryUntil =
           new Date(Date.now() + recoveryHours * 60 * 60 * 1000);
+
       }
 
       const shootXp = computeShootXP(bullets, hit);
       const rxp = computeRXP(bullets, hit);
       const notoriety = computeNotoriety(bullets, hit);
+
+      /*
+      NEW — Hitlist lookup
+      */
+
+      let bountyContract: any = null;
+
+      if (hit) {
+
+        bountyContract = await app.prisma.hitlistContract.findFirst({
+          where: {
+            targetCharacterId: defender.id,
+            status: "ACTIVE",
+            deadline: { gt: new Date() },
+            minBulletsRequired: { lte: bullets }
+          },
+          orderBy: {
+            rewardCash: "desc"
+          }
+        });
+
+      }
 
       await app.prisma.$transaction(async (tx: any) => {
 
@@ -236,7 +270,7 @@ export async function combatRoutes(app: FastifyInstance) {
           data: defenderUpdate
         });
 
-        await tx.combatLog.create({
+        const combatLog = await tx.combatLog.create({
           data: {
             attackerId: attacker.id,
             defenderId: defender.id,
@@ -245,10 +279,55 @@ export async function combatRoutes(app: FastifyInstance) {
             damage,
             shootXp,
             rxp,
-            notorietyGain: notoriety
+            notorietyGain: notoriety,
+            hitlistContractId: bountyContract?.id ?? null
           }
         });
+
+        /*
+        Bounty reward payout
+        */
+
+        if (bountyContract) {
+
+          const reward = bountyContract.rewardCash;
+
+          await tx.character.update({
+            where: { id: attacker.id },
+            data: {
+              cash: { increment: reward },
+              rxp: { increment: 15 }
+            }
+          });
+
+          await tx.skills.update({
+            where: { characterId: attacker.id },
+            data: {
+              shooting: { increment: 12 }
+            }
+          });
+
+          await tx.hitlistContract.update({
+            where: { id: bountyContract.id },
+            data: {
+              status: "COMPLETED",
+              completedAt: new Date()
+            }
+          });
+
+        }
+
       });
+
+      if (bountyContract) {
+
+        await emitHitlistCompleted({
+          contractId: bountyContract.id,
+          hunterId: attacker.id,
+          targetId: defender.id
+        });
+
+      }
 
       await emitCombatResult({
         attackerId: attacker.id,
@@ -275,8 +354,12 @@ export async function combatRoutes(app: FastifyInstance) {
         shootXp,
         rxp,
         critical,
-        death: died
+        death: died,
+        bountyClaimed: bountyContract ? true : false,
+        bountyReward: bountyContract?.rewardCash ?? 0
       };
+
     }
   );
+
 }

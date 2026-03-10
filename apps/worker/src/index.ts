@@ -19,6 +19,7 @@ const pool = new Pool({
 });
 
 const adapter = new PrismaPg(pool);
+
 const prisma = new PrismaClient({ adapter });
 
 const WS_BRIDGE_URL =
@@ -33,10 +34,13 @@ const WS_FACTORY_EVENT =
 Energy regeneration
 */
 async function energyRegenTick() {
+
   const now = new Date();
+
   const energies = await prisma.energy.findMany();
 
   for (const entry of energies) {
+
     const last = new Date(entry.lastRegenAt);
 
     const secondsElapsed =
@@ -59,13 +63,16 @@ async function energyRegenTick() {
         )
       }
     });
+
   }
+
 }
 
 /*
 Jail countdown
 */
 async function jailTick() {
+
   const now = new Date();
 
   const jailed = await prisma.jailState.findMany({
@@ -73,6 +80,7 @@ async function jailTick() {
   });
 
   for (const entry of jailed) {
+
     const last = new Date(entry.lastUpdatedAt);
 
     const secondsElapsed =
@@ -95,6 +103,7 @@ async function jailTick() {
     Passive jail XP while incarcerated
     */
     try {
+
       await prisma.skills.update({
         where: { characterId: entry.characterId },
         data: {
@@ -103,11 +112,13 @@ async function jailTick() {
           }
         }
       });
+
     } catch (err) {
       console.error("Jail XP increment failed", err);
     }
 
     try {
+
       await fetch(WS_BRIDGE_URL, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -115,10 +126,13 @@ async function jailTick() {
           characterId: entry.characterId
         })
       });
+
     } catch (err) {
       console.error("WS jail update failed", err);
     }
+
   }
+
 }
 
 /*
@@ -126,20 +140,24 @@ Lead decay system
 1 lead every 3 hours
 */
 async function leadDecayTick() {
+
   const characters = await prisma.character.findMany({
     where: { lead: { gt: 0 } }
   });
 
   for (const char of characters) {
+
     const newLead = Math.max(0, char.lead - 1);
 
     if (newLead !== char.lead) {
+
       await prisma.character.update({
         where: { id: char.id },
         data: { lead: newLead }
       });
 
       try {
+
         await fetch(WS_BRIDGE_URL, {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -147,11 +165,15 @@ async function leadDecayTick() {
             characterId: char.id
           })
         });
+
       } catch (err) {
         console.error("WS lead decay update failed", err);
       }
+
     }
+
   }
+
 }
 
 /*
@@ -160,6 +182,7 @@ Runs every 60 seconds
 Supports fractional production
 */
 async function factoryProductionTick() {
+
   const factories = await prisma.bulletFactory.findMany({
     include: {
       character: true
@@ -167,6 +190,7 @@ async function factoryProductionTick() {
   });
 
   for (const factory of factories) {
+
     const character = factory.character;
 
     const productionPerMinute =
@@ -179,16 +203,19 @@ async function factoryProductionTick() {
       Math.floor(progress);
 
     if (bulletsProduced <= 0) {
+
       await prisma.bulletFactory.update({
         where: { id: factory.id },
         data: {
           productionProgress: progress
         }
       });
+
       continue;
     }
 
     const maxByLead = character.lead;
+
     const maxByCash = Math.floor(character.cash / 2);
 
     const allowedProduction = Math.min(
@@ -198,15 +225,18 @@ async function factoryProductionTick() {
     );
 
     if (allowedProduction <= 0) {
+
       console.log(
         `Factory paused for ${character.nickname} (insufficient resources)`
       );
+
       continue;
     }
 
     const cashCost = allowedProduction * 2;
 
     const result = await prisma.$transaction(async (tx) => {
+
       const updatedCharacter =
         await tx.character.update({
           where: { id: character.id },
@@ -227,6 +257,7 @@ async function factoryProductionTick() {
       });
 
       return updatedCharacter;
+
     });
 
     console.log(
@@ -234,6 +265,7 @@ async function factoryProductionTick() {
     );
 
     try {
+
       await fetch(WS_BRIDGE_URL, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -259,13 +291,16 @@ async function factoryProductionTick() {
     } catch (err) {
       console.error("WS update failed", err);
     }
+
   }
+
 }
 
 /*
 Recovery cleanup
 */
 async function recoveryStatusTick() {
+
   const now = new Date();
 
   const recoveringCharacters = await prisma.character.findMany({
@@ -286,6 +321,7 @@ async function recoveryStatusTick() {
     if (!character.recoveryUntil) continue;
 
     if (character.injurySeverity <= 0) {
+
       await prisma.character.update({
         where: { id: character.id },
         data: {
@@ -313,6 +349,7 @@ async function recoveryStatusTick() {
     });
 
     try {
+
       await fetch(WS_BRIDGE_URL, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -320,16 +357,20 @@ async function recoveryStatusTick() {
           characterId: character.id
         })
       });
+
     } catch (err) {
       console.error("WS recovery update failed", err);
     }
+
   }
+
 }
 
 /*
 Passive HP regeneration
 */
 async function passiveHpRegenTick() {
+
   const damagedCharacters = await prisma.character.findMany({
     where: {
       hp: { lt: 1000 },
@@ -356,6 +397,7 @@ async function passiveHpRegenTick() {
     });
 
     try {
+
       await fetch(WS_BRIDGE_URL, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -363,16 +405,20 @@ async function passiveHpRegenTick() {
           characterId: character.id
         })
       });
+
     } catch (err) {
       console.error("WS HP regen update failed", err);
     }
+
   }
+
 }
 
 /*
 Intel expiration cleanup
 */
 async function intelExpiryTick() {
+
   try {
 
     const now = new Date();
@@ -392,6 +438,55 @@ async function intelExpiryTick() {
   } catch (err) {
     console.error("Intel expiry cleanup failed", err);
   }
+
+}
+
+/*
+NEW — Hitlist contract expiration
+*/
+async function hitlistExpiryTick() {
+
+  try {
+
+    const now = new Date();
+
+    const expiredContracts = await prisma.hitlistContract.findMany({
+      where: {
+        status: "ACTIVE",
+        deadline: {
+          lt: now
+        }
+      }
+    });
+
+    for (const contract of expiredContracts) {
+
+      await prisma.$transaction(async (tx) => {
+
+        await tx.hitlistContract.update({
+          where: { id: contract.id },
+          data: {
+            status: "EXPIRED"
+          }
+        });
+
+        await tx.character.update({
+          where: { id: contract.creatorCharacterId },
+          data: {
+            cash: { increment: contract.rewardCash }
+          }
+        });
+
+      });
+
+      console.log(`Hitlist expired: ${contract.id}`);
+
+    }
+
+  } catch (err) {
+    console.error("Hitlist expiry cleanup failed", err);
+  }
+
 }
 
 async function start() {
@@ -420,9 +515,17 @@ async function start() {
     await intelExpiryTick();
   }, 5 * 60 * 1000);
 
+  /*
+  NEW — Hitlist cleanup every 5 minutes
+  */
+  setInterval(async () => {
+    await hitlistExpiryTick();
+  }, 5 * 60 * 1000);
+
   console.log(
-    "Worker active (energy + jail + lead + factories + recovery + intel cleanup)"
+    "Worker active (energy + jail + lead + factories + recovery + intel cleanup + hitlist expiry)"
   );
+
 }
 
 start();
