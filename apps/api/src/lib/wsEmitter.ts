@@ -60,9 +60,6 @@ export async function emitJailEvent(payload: any) {
   }
 }
 
-/*
-NEW — Sprint 8B Intel discovery event
-*/
 export async function emitIntelDiscovered(payload: any) {
   try {
     await fetch(`${WS_URL}/internal/intel-discovered`, {
@@ -72,5 +69,20 @@ export async function emitIntelDiscovered(payload: any) {
     });
   } catch (err) {
     console.error("WS intel emit failed", err);
+  }
+}
+
+/*
+NEW — Sprint 8C Investigation Result
+*/
+export async function emitInvestigationResult(payload: any) {
+  try {
+    await fetch(`${WS_URL}/internal/investigation-result`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error("WS investigation emit failed", err);
   }
 }

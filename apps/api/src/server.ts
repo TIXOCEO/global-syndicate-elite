@@ -23,11 +23,11 @@ import { jailRoutes } from "./routes/jail";
 
 /* NEW */
 import { detectiveRoutes } from "./routes/detectives";
+import { investigationRoutes } from "./routes/investigation";
 
 const app = Fastify({ logger: true });
 
 async function bootstrap() {
-
   await app.register(cors, {
     origin: true,
     credentials: true
@@ -43,6 +43,7 @@ async function bootstrap() {
   await app.register(authPlugin);
 
   await app.register(authRoutes, { prefix: "/auth" });
+
   await app.register(accountRoutes);
   await app.register(characterRoutes);
   await app.register(stateRoutes);
@@ -54,11 +55,11 @@ async function bootstrap() {
   await app.register(hospitalRoutes);
   await app.register(shopRoutes);
 
-  /* NEW JAIL ROUTES */
   await app.register(jailRoutes);
 
-  /* NEW DETECTIVE ROUTES */
+  /* Sprint 8 */
   await app.register(detectiveRoutes);
+  await app.register(investigationRoutes);
 
   await app.register(adminRoutes);
 
