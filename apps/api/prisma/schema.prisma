@@ -30,105 +30,174 @@ enum FactoryType {
   LARGE
 }
 
+enum ItemType {
+  MEDKIT_I
+}
+
 model Account {
-  id              String   @id @default(uuid())
-  email           String   @unique
+  id              String        @id @default(uuid())
+  email           String        @unique
   passwordHash    String
-  referralCode    String   @unique
+  referralCode    String        @unique
   referredByCode  String?
-  eliteCredits    Int      @default(0)
+  eliteCredits    Int           @default(0)
   status          AccountStatus @default(ACTIVE)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   characters      Character[]
 }
 
 model Character {
-  id              String   @id @default(uuid())
-  accountId       String
-  account         Account  @relation(fields: [accountId], references: [id])
-  nickname        String   @unique
-  tier            Int      @default(1)
-  rxp             Int      @default(0)
-  hp              Int      @default(1000)
-  notoriety       Int      @default(0)
-  cash            Int      @default(0)
-  lead            Int      @default(0)
-  bullets         Int      @default(0)
-  status          CharacterStatus @default(ACTIVE)
-  createdAt       DateTime @default(now())
-  diedAt          DateTime?
-  lastCrimeAt     DateTime?
-  skills          Skills?
-  energy          Energy?
-  jail            JailState?
-  cooldown        CrimeCooldown?
-  crimeLogs       CrimeLog[]
-  factories       BulletFactory[]
+  id                  String          @id @default(uuid())
+  accountId           String
+  account             Account         @relation(fields: [accountId], references: [id])
+  nickname            String          @unique
+  tier                Int             @default(1)
+  rxp                 Int             @default(0)
+  hp                  Int             @default(1000)
+  notoriety           Int             @default(0)
+  cash                Int             @default(0)
+  lead                Int             @default(0)
+  bullets             Int             @default(0)
+  injurySeverity      Float           @default(0)
+  status              CharacterStatus @default(ACTIVE)
+  createdAt           DateTime        @default(now())
+  diedAt              DateTime?
+  lastCrimeAt         DateTime?
+  protectionUntil     DateTime?
+  recoveryUntil       DateTime?
+  medkitCooldownUntil DateTime?
+
+  skills              Skills?
+  energy              Energy?
+  jail                JailState?
+  cooldown            CrimeCooldown?
+
+  crimeLogs           CrimeLog[]
+  factories           BulletFactory[]
+  items               CharacterItem[]
+
+  combatLogsAttacker  CombatLog[]     @relation("CombatAttacker")
+  combatLogsDefender  CombatLog[]     @relation("CombatDefender")
 
   @@index([accountId])
 }
 
 model BulletFactory {
-  id                     String      @id @default(uuid())
-  characterId            String
-  character              Character   @relation(fields: [characterId], references: [id])
-  factoryType            FactoryType
-  productionRatePerHour  Int
-
-  productionProgress     Float       @default(0)
-  lastProductionAt       DateTime    @default(now())
-
-  createdAt              DateTime    @default(now())
+  id                    String      @id @default(uuid())
+  characterId           String
+  character             Character   @relation(fields: [characterId], references: [id])
+  factoryType           FactoryType
+  productionRatePerHour Int
+  productionProgress    Float       @default(0)
+  lastProductionAt      DateTime    @default(now())
+  createdAt             DateTime    @default(now())
 
   @@index([characterId])
 }
 
 model Skills {
-  characterId     String @id
-  character       Character @relation(fields: [characterId], references: [id])
-  shooting        Int @default(0)
-  smuggling       Int @default(0)
-  investigation   Int @default(0)
-  jailXp          Float @default(0)
+  characterId   String    @id
+  character     Character @relation(fields: [characterId], references: [id])
+
+  shooting      Int       @default(0)
+  smuggling     Int       @default(0)
+  investigation Int       @default(0)
+
+  jailXp        Float     @default(0)
+  bustSkillXP   Float     @default(0)
 }
 
 model Energy {
-  characterId     String @id
-  character       Character @relation(fields: [characterId], references: [id])
-  energy          Int @default(100)
-  lastRegenAt     DateTime @default(now())
+  characterId String    @id
+  character   Character @relation(fields: [characterId], references: [id])
+
+  energy      Int       @default(100)
+  lastRegenAt DateTime  @default(now())
 }
 
 model JailState {
-  characterId     String @id
-  character       Character @relation(fields: [characterId], references: [id])
-  jailRemainingSeconds Int @default(0)
-  lastUpdatedAt        DateTime @default(now())
+  characterId          String    @id
+  character            Character @relation(fields: [characterId], references: [id])
+  jailRemainingSeconds Int       @default(0)
+  lastUpdatedAt        DateTime  @default(now())
+}
+
+model JailActionLog {
+  id           String   @id @default(uuid())
+  actorId      String?
+  targetId     String?
+  action       String
+  success      Boolean
+  createdAt    DateTime @default(now())
+
+  @@index([actorId])
+  @@index([targetId])
 }
 
 model CrimeLog {
-  id                  String   @id @default(uuid())
-  characterId         String
-  character           Character @relation(fields: [characterId], references: [id])
-  crimeType           CrimeType
-  success             Boolean
-  cashGranted         Int
-  leadGranted         Int
-  shootingXpGranted   Int
-  smugglingXpGranted  Int
-  rxpGranted          Int
-  energyConsumed      Int
-  createdAt           DateTime @default(now())
+  id                 String    @id @default(uuid())
+  characterId        String
+  character          Character @relation(fields: [characterId], references: [id])
+
+  crimeType          CrimeType
+  success            Boolean
+  cashGranted        Int
+  leadGranted        Int
+  shootingXpGranted  Int
+  smugglingXpGranted Int
+  rxpGranted         Int
+  energyConsumed     Int
+
+  createdAt          DateTime  @default(now())
 
   @@index([characterId, createdAt(sort: Desc)])
 }
 
+model CombatLog {
+  id            String    @id @default(uuid())
+
+  attackerId    String
+  attacker      Character @relation("CombatAttacker", fields: [attackerId], references: [id])
+
+  defenderId    String
+  defender      Character @relation("CombatDefender", fields: [defenderId], references: [id])
+
+  bulletsUsed   Int
+  hit           Boolean
+  damage        Float
+  shootXp       Int
+  rxp           Int
+  notorietyGain Int
+
+  createdAt     DateTime  @default(now())
+
+  @@index([attackerId])
+  @@index([defenderId])
+}
+
 model CrimeCooldown {
-  characterId String @id
+  characterId String    @id
   character   Character @relation(fields: [characterId], references: [id])
+
   crimeType   String
   lastUsedAt  DateTime
 
+  @@index([characterId])
+}
+
+model CharacterItem {
+  id          String    @id @default(uuid())
+
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id])
+
+  itemType    ItemType
+  quantity    Int       @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, itemType])
   @@index([characterId])
 }

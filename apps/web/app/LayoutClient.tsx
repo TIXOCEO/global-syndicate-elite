@@ -2,10 +2,13 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+
 import GlobalHUD from "@/components/hud/GlobalHUD";
 import BottomNav from "@/components/navigation/BottomNav";
 import InstallModal from "@/components/pwa/InstallModal";
+
 import { apiFetch } from "@/lib/apiClient";
+
 import { useCharacterStore } from "@/stores/characterStore";
 import { useResourceStore } from "@/stores/resourceStore";
 
@@ -22,12 +25,12 @@ export default function LayoutClient({
 
   const setCharacter = useCharacterStore((s) => s.setCharacter);
   const clearCharacter = useCharacterStore((s) => s.clearCharacter);
+
   const setResources = useResourceStore((s) => s.setResources);
 
   const characterRank = 2;
 
   async function bootClient() {
-
     try {
 
       const token =
@@ -91,7 +94,6 @@ export default function LayoutClient({
       }
 
     }
-
   }
 
   useEffect(() => {
@@ -108,7 +110,7 @@ export default function LayoutClient({
           {children}
         </main>
       ) : (
-        <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-20 pb-24">
+        <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-20 pb-32">
           {children}
         </main>
       )}

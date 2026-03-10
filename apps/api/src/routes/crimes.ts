@@ -22,12 +22,91 @@ function requiredRXPForTier(t: number) {
   return Math.round(500 * Math.pow(t, 1.85));
 }
 
+/*
+Arrest probability formulas
+*/
+function clamp(v: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function computeArrestChance(
+  crimeType: string,
+  notoriety: number,
+  smugglingSkill: number,
+  tier: number
+) {
+  const tierModifier = 0.004 * tier;
+
+  if (crimeType === "STREET_THEFT") {
+    return clamp(
+      0.08 +
+        0.00002 * notoriety +
+        tierModifier -
+        smugglingSkill * 0.0015,
+      0.05,
+      0.25
+    );
+  }
+
+  if (crimeType === "BLACK_MARKET_DEAL") {
+    return clamp(
+      0.12 +
+        0.000025 * notoriety +
+        tierModifier -
+        smugglingSkill * 0.0018,
+      0.06,
+      0.30
+    );
+  }
+
+  if (crimeType === "WAREHOUSE_RAID") {
+    return clamp(
+      0.16 +
+        0.00003 * notoriety +
+        tierModifier -
+        smugglingSkill * 0.002,
+      0.08,
+      0.35
+    );
+  }
+
+  return 0;
+}
+
+/*
+Jail sentence formulas
+1 second = 1 month
+*/
+function computeCrimeSentence(
+  crimeType: string,
+  notoriety: number
+) {
+  if (crimeType === "STREET_THEFT") {
+    return Math.round(
+      15 + Math.random() * 10 + 0.01 * notoriety
+    );
+  }
+
+  if (crimeType === "BLACK_MARKET_DEAL") {
+    return Math.round(
+      25 + Math.random() * 15 + 0.015 * notoriety
+    );
+  }
+
+  if (crimeType === "WAREHOUSE_RAID") {
+    return Math.round(
+      40 + Math.random() * 20 + 0.02 * notoriety
+    );
+  }
+
+  return 10;
+}
+
 export async function crimeRoutes(app: FastifyInstance) {
   app.post(
     "/crimes/commit",
     { preHandler: app.authenticate },
     async (req: any, reply) => {
-
       const accountId = req.user.accountId;
 
       const lastCall = rateLimitMap.get(accountId);
@@ -76,30 +155,26 @@ export async function crimeRoutes(app: FastifyInstance) {
         return reply.code(403).send({ error: "Character is jailed" });
       }
 
-      // GLOBAL COOLDOWN CHECK
       if (character.cooldown) {
+        const lastUsed =
+          new Date(character.cooldown.lastUsedAt).getTime();
 
-        const lastUsed = new Date(character.cooldown.lastUsedAt).getTime();
         const lastCrimeType = character.cooldown.crimeType;
 
         const lastDef =
           CrimeDefinitions[lastCrimeType as keyof typeof CrimeDefinitions];
 
         if (lastDef) {
-
           const cooldownSeconds = lastDef.cooldownSeconds;
 
           const secondsSince = (Date.now() - lastUsed) / 1000;
 
           if (secondsSince < cooldownSeconds) {
-
             return reply.code(429).send({
               error: "Crime on cooldown",
-              cooldownRemainingSeconds: Math.ceil(
-                cooldownSeconds - secondsSince
-              )
+              cooldownRemainingSeconds:
+                Math.ceil(cooldownSeconds - secondsSince)
             });
-
           }
         }
       }
@@ -127,7 +202,8 @@ export async function crimeRoutes(app: FastifyInstance) {
         0.0025 * skillValue +
         0.015 * (character.tier - 1);
 
-      const inexperiencePenalty = Math.max(0, 25 - skillValue) * 0.006;
+      const inexperiencePenalty =
+        Math.max(0, 25 - skillValue) * 0.006;
 
       successChance -= inexperiencePenalty;
 
@@ -150,13 +226,12 @@ export async function crimeRoutes(app: FastifyInstance) {
       let leadLost = 0;
 
       if (success) {
-
         const variance = 0.75 + Math.random() * 0.5;
 
         cashReward = Math.round(
           def.baseCash *
-          variance *
-          (1 + 0.05 * (character.tier - 1))
+            variance *
+            (1 + 0.05 * (character.tier - 1))
         );
 
         if (Math.random() < def.baseLeadDropChance) {
@@ -175,40 +250,79 @@ export async function crimeRoutes(app: FastifyInstance) {
         }
 
         rxpGain = computeRXP(cashReward);
-
       } else {
+        /*
+        Crime arrest check
+        */
 
-        if (Math.random() < 0.5) {
+        const arrestChance = computeArrestChance(
+          crimeType,
+          character.notoriety ?? 0,
+          character.skills?.smuggling ?? 0,
+          character.tier
+        );
 
-          leadLost = Math.min(
-            character.lead,
-            Math.floor(Math.random() * def.leadLossMax) + 1
+        if (Math.random() < arrestChance) {
+          jailed = true;
+
+          const sentence = computeCrimeSentence(
+            crimeType,
+            character.notoriety ?? 0
           );
 
-          await applyResourceDelta(app.prisma, character.id, {
-            lead: -leadLost
+          await app.prisma.jailState.upsert({
+            where: { characterId: character.id },
+            update: {
+              jailRemainingSeconds: sentence,
+              lastUpdatedAt: new Date()
+            },
+            create: {
+              characterId: character.id,
+              jailRemainingSeconds: sentence,
+              lastUpdatedAt: new Date()
+            }
           });
 
+          await emitStateUpdate({
+            characterId: character.id
+          });
+        } else {
+          if (Math.random() < 0.5) {
+            leadLost = Math.min(
+              character.lead,
+              Math.floor(Math.random() * def.leadLossMax) + 1
+            );
+
+            await applyResourceDelta(app.prisma, character.id, {
+              lead: -leadLost
+            });
+          }
+
+          hpDamage =
+            Math.floor(Math.random() * 9) + 6 + character.tier;
+
+          let newHP = Math.max(0, character.hp - hpDamage);
+
+          let newStatus: "ACTIVE" | "CRITICAL" | "DEAD" =
+            character.status;
+
+          if (newHP <= 150 && newHP > 0) newStatus = "CRITICAL";
+
+          if (newHP === 0) {
+            newHP = 1;
+            newStatus = "CRITICAL";
+          }
+
+          await app.prisma.character.update({
+            where: { id: character.id },
+            data: {
+              hp: newHP,
+              status: newStatus
+            }
+          });
         }
-
-        hpDamage = Math.floor(Math.random() * 9) + 6 + character.tier;
-
-        const newHP = Math.max(0, character.hp - hpDamage);
-
-        let newStatus: "ACTIVE" | "CRITICAL" | "DEAD" = character.status;
-
-        if (newHP <= 150 && newHP > 0) newStatus = "CRITICAL";
-
-        if (newHP === 0) newStatus = "DEAD";
-
-        await app.prisma.character.update({
-          where: { id: character.id },
-          data: { hp: newHP, status: newStatus }
-        });
-
       }
 
-      // SAVE COOLDOWN
       await app.prisma.crimeCooldown.upsert({
         where: { characterId: character.id },
         update: {
@@ -249,7 +363,6 @@ export async function crimeRoutes(app: FastifyInstance) {
         jailed,
         cooldownRemainingSeconds: def.cooldownSeconds
       };
-
     }
   );
 }

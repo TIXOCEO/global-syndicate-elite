@@ -1,0 +1,111 @@
+.
+├── apps
+│   ├── api
+│   │   ├── package.json
+│   │   ├── path
+│   │   ├── prisma
+│   │   │   ├── migrations
+│   │   │   └── schema.prisma
+│   │   ├── prisma.config.ts
+│   │   ├── src
+│   │   │   ├── game
+│   │   │   ├── index.ts
+│   │   │   ├── lib
+│   │   │   ├── plugins
+│   │   │   ├── routes
+│   │   │   ├── server.ts
+│   │   │   └── types
+│   │   └── tsconfig.json
+│   ├── mobile
+│   ├── web
+│   │   ├── app
+│   │   │   ├── attack
+│   │   │   ├── crimes
+│   │   │   ├── dashboard
+│   │   │   ├── death
+│   │   │   ├── factories
+│   │   │   ├── favicon.ico
+│   │   │   ├── globals.css
+│   │   │   ├── hospital
+│   │   │   ├── jail
+│   │   │   ├── LayoutClient.tsx
+│   │   │   ├── layout.tsx
+│   │   │   ├── login
+│   │   │   ├── page.tsx
+│   │   │   ├── profile
+│   │   │   ├── progression
+│   │   │   ├── resources
+│   │   │   ├── settings
+│   │   │   └── shop
+│   │   ├── components
+│   │   │   ├── hud
+│   │   │   ├── navigation
+│   │   │   └── pwa
+│   │   ├── eslint.config.mjs
+│   │   ├── lib
+│   │   │   ├── apiClient.ts
+│   │   │   ├── crimeDefinitions.ts
+│   │   │   ├── pwa
+│   │   │   └── socket.ts
+│   │   ├── middleware.ts
+│   │   ├── next.config.js
+│   │   ├── next.config.ts
+│   │   ├── next-env.d.ts
+│   │   ├── package.json
+│   │   ├── postcss.config.js
+│   │   ├── postcss.config.mjs
+│   │   ├── public
+│   │   │   ├── file.svg
+│   │   │   ├── globe.svg
+│   │   │   ├── icons
+│   │   │   ├── images
+│   │   │   ├── manifest.json
+│   │   │   ├── next.svg
+│   │   │   ├── sw.js
+│   │   │   ├── vercel.svg
+│   │   │   └── window.svg
+│   │   ├── README.md
+│   │   ├── stores
+│   │   │   ├── authStore.ts
+│   │   │   ├── characterStore.ts
+│   │   │   ├── crimeStore.ts
+│   │   │   └── resourceStore.ts
+│   │   └── tsconfig.json
+│   ├── worker
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   └── index.ts
+│   │   └── tsconfig.json
+│   └── ws
+│       ├── ecosystem.config.js
+│       ├── package.json
+│       ├── src
+│       │   └── index.ts
+│       └── tsconfig.json
+├── ecosystem.config.cjs
+├── package.json
+├── packages
+│   ├── anti-cheat
+│   ├── auth
+│   │   └── src
+│   │       ├── hash.ts
+│   │       ├── jwt.ts
+│   │       └── referral.ts
+│   ├── economy
+│   ├── game-engine
+│   │   └── src
+│   │       ├── energy.ts
+│   │       └── injuryEngine.js
+│   ├── notifications
+│   ├── shared
+│   └── ui
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── scripts
+│   ├── combat-load-test.js
+│   ├── combat-load-test.sh
+│   └── deploy.sh
+├── structure.txt
+└── tall unattended-upgrades -y
+
+52 directories, 57 files

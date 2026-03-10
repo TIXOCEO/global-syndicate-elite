@@ -1,11 +1,11 @@
 "use client";
-
 import { useEffect } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { useCharacterStore } from "@/stores/characterStore";
 import { useResourceStore } from "@/stores/resourceStore";
 
 export default function ProgressionPage() {
+
   const setCharacter = useCharacterStore((s) => s.setCharacter);
   const setResources = useResourceStore((s) => s.setResources);
 
@@ -20,7 +20,9 @@ export default function ProgressionPage() {
   }
 
   async function hydrate() {
+
     try {
+
       const sync = await apiFetch("/api/state/sync");
 
       setCharacter({
@@ -36,6 +38,7 @@ export default function ProgressionPage() {
           smuggling: sync.skills?.smuggling ?? 0,
           investigation: sync.skills?.investigation ?? 0,
           jailXp: sync.skills?.jailXp ?? 0,
+          bustSkillXP: sync.skills?.bustSkillXP ?? 0,
         },
       });
 
@@ -44,9 +47,13 @@ export default function ProgressionPage() {
         lead: sync.resources.lead,
         energy: sync.resources.energy,
       });
+
     } catch (err) {
+
       console.error("Progression hydration failed", err);
+
     }
+
   }
 
   useEffect(() => {
@@ -54,14 +61,17 @@ export default function ProgressionPage() {
   }, []);
 
   return (
+
     <div className="space-y-6">
+
       <h1 className="text-2xl font-bold text-[#C6A756]">
         Progression
       </h1>
 
-      {/* TIER CARD */}
       <div className="bg-[#111827] border border-[#C6A756] rounded-xl p-6 space-y-4">
+
         <div className="flex justify-between items-center">
+
           <div>
             <h2 className="text-sm text-zinc-400">
               Current Tier
@@ -79,10 +89,11 @@ export default function ProgressionPage() {
               {energy}
             </p>
           </div>
+
         </div>
 
-        {/* RXP BAR */}
         <div className="space-y-2">
+
           <div className="flex justify-between text-xs text-zinc-400">
             <span>Rank XP</span>
             <span>{rxp} / {requiredRXP}</span>
@@ -94,67 +105,63 @@ export default function ProgressionPage() {
               style={{ width: `${percent}%` }}
             />
           </div>
+
         </div>
+
       </div>
 
-      {/* SKILLS */}
       <div className="bg-[#111827] border border-[#C6A756] rounded-xl p-6 space-y-6">
+
         <h2 className="text-lg font-semibold text-[#C6A756] mb-1">
           Skills
         </h2>
 
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-zinc-400">
-            <span>Shooting</span>
-            <span>{skills.shooting}</span>
-          </div>
-          <div className="h-2 bg-zinc-800 rounded overflow-hidden">
-            <div
-              className="h-full bg-red-500 transition-all duration-500"
-              style={{ width: `${skillPercent(skills.shooting)}%` }}
-            />
-          </div>
-        </div>
+        {["shooting","smuggling","investigation","jailXp","bustSkillXP"].map((skill)=>{
 
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-zinc-400">
-            <span>Smuggling</span>
-            <span>{skills.smuggling}</span>
-          </div>
-          <div className="h-2 bg-zinc-800 rounded overflow-hidden">
-            <div
-              className="h-full bg-purple-500 transition-all duration-500"
-              style={{ width: `${skillPercent(skills.smuggling)}%` }}
-            />
-          </div>
-        </div>
+          const value = (skills as any)[skill] ?? 0;
 
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-zinc-400">
-            <span>Investigation</span>
-            <span>{skills.investigation}</span>
-          </div>
-          <div className="h-2 bg-zinc-800 rounded overflow-hidden">
-            <div
-              className="h-full bg-blue-500 transition-all duration-500"
-              style={{ width: `${skillPercent(skills.investigation)}%` }}
-            />
-          </div>
-        </div>
+          const colors:any = {
+            shooting:"bg-red-500",
+            smuggling:"bg-purple-500",
+            investigation:"bg-blue-500",
+            jailXp:"bg-orange-400",
+            bustSkillXP:"bg-yellow-400"
+          };
 
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-zinc-400">
-            <span>Jail XP</span>
-            <span>{skills.jailXp}</span>
-          </div>
-          <div className="h-2 bg-zinc-800 rounded overflow-hidden">
-            <div
-              className="h-full bg-orange-400 transition-all duration-500"
-              style={{ width: `${skillPercent(skills.jailXp)}%` }}
-            />
-          </div>
-        </div>
+          const names:any = {
+            shooting:"Shooting",
+            smuggling:"Smuggling",
+            investigation:"Investigation",
+            jailXp:"Jail XP",
+            bustSkillXP:"Bust Skill"
+          };
+
+          return (
+
+            <div key={skill} className="space-y-1">
+
+              <div className="flex justify-between text-xs text-zinc-400">
+                <span>{names[skill]}</span>
+                <span>{value}</span>
+              </div>
+
+              <div className="h-2 bg-zinc-800 rounded overflow-hidden">
+                <div
+                  className={`h-full ${colors[skill]} transition-all duration-500`}
+                  style={{ width: `${skillPercent(value)}%` }}
+                />
+              </div>
+
+            </div>
+
+          );
+
+        })}
+
       </div>
+
     </div>
+
   );
+
 }

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Skills" ADD COLUMN     "bustSkillXP" DOUBLE PRECISION NOT NULL DEFAULT 0;

@@ -22,6 +22,9 @@ export async function resourceRoutes(app: FastifyInstance) {
           cash: true,
           lead: true,
           bullets: true,
+          injurySeverity: true,
+          recoveryUntil: true,
+          medkitCooldownUntil: true,
           energy: {
             select: { energy: true }
           },
@@ -49,6 +52,9 @@ export async function resourceRoutes(app: FastifyInstance) {
         rxp: character.rxp,
         hp: character.hp,
         status: character.status,
+        injurySeverity: character.injurySeverity,
+        recoveryUntil: character.recoveryUntil?.getTime() ?? null,
+        medkitCooldownUntil: character.medkitCooldownUntil?.getTime() ?? null,
         wallet: {
           cash: character.cash,
           lead: character.lead,
