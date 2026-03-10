@@ -3,8 +3,10 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
+
 import prismaPlugin from "./plugins/prisma";
 import authPlugin from "./plugins/auth";
+
 import { authRoutes } from "./routes/auth";
 import { accountRoutes } from "./routes/account";
 import { characterRoutes } from "./routes/character";
@@ -18,6 +20,9 @@ import { playerRoutes } from "./routes/players";
 import { hospitalRoutes } from "./routes/hospital";
 import { shopRoutes } from "./routes/shop";
 import { jailRoutes } from "./routes/jail";
+
+/* NEW */
+import { detectiveRoutes } from "./routes/detectives";
 
 const app = Fastify({ logger: true });
 
@@ -38,7 +43,6 @@ async function bootstrap() {
   await app.register(authPlugin);
 
   await app.register(authRoutes, { prefix: "/auth" });
-
   await app.register(accountRoutes);
   await app.register(characterRoutes);
   await app.register(stateRoutes);
@@ -52,6 +56,9 @@ async function bootstrap() {
 
   /* NEW JAIL ROUTES */
   await app.register(jailRoutes);
+
+  /* NEW DETECTIVE ROUTES */
+  await app.register(detectiveRoutes);
 
   await app.register(adminRoutes);
 

@@ -115,6 +115,7 @@ model DetectiveCooldown {
   targetCharacterId  String
   cooldownUntil      DateTime
 
+  @@unique([viewerCharacterId, targetCharacterId])
   @@index([viewerCharacterId])
   @@index([targetCharacterId])
 }
