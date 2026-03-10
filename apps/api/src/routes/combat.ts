@@ -22,7 +22,6 @@ function computeRecoveryCombatMult(severity: number) {
 }
 
 export async function combatRoutes(app: FastifyInstance) {
-
   app.post(
     "/combat/attack",
     { preHandler: app.authenticate },
@@ -32,6 +31,7 @@ export async function combatRoutes(app: FastifyInstance) {
       const accountId = req.user.accountId;
 
       const now = Date.now();
+
       const last = combatRateLimit.get(accountId);
 
       if (last && now - last < 1000) {
@@ -89,6 +89,30 @@ export async function combatRoutes(app: FastifyInstance) {
         return reply.code(404).send({ error: "Target not found" });
       }
 
+      /* NEW — Intel requirement */
+
+      const intel = await app.prisma.knownLocation.findFirst({
+        where: {
+          viewerCharacterId: attacker.id,
+          targetCharacterId: defender.id,
+          expiresAt: { gt: new Date() }
+        }
+      });
+
+      if (!intel) {
+        return reply.code(403).send({
+          error: "Target location unknown"
+        });
+      }
+
+      /* NEW — Same country validation */
+
+      if (attacker.currentCountryId !== defender.currentCountryId) {
+        return reply.code(403).send({
+          error: "Target not in same country"
+        });
+      }
+
       if (defender.tier < 5) {
         return reply.code(403).send({
           error: "Target has not unlocked PvP"
@@ -106,9 +130,6 @@ export async function combatRoutes(app: FastifyInstance) {
         return reply.code(403).send({ error: "Target under protection" });
       }
 
-      /*
-      Recovery combat penalty
-      */
       const attackerRecoveryMult =
         computeRecoveryCombatMult(attacker.injurySeverity ?? 0);
 
@@ -173,13 +194,6 @@ export async function combatRoutes(app: FastifyInstance) {
       const rxp = computeRXP(bullets, hit);
       const notoriety = computeNotoriety(bullets, hit);
 
-      app.log.info({
-        type: "combat_attempt",
-        attackerId: attacker.id,
-        defenderId: defender.id,
-        bullets
-      });
-
       await app.prisma.$transaction(async (tx: any) => {
 
         await tx.character.update({
@@ -234,24 +248,6 @@ export async function combatRoutes(app: FastifyInstance) {
             notorietyGain: notoriety
           }
         });
-
-      });
-
-      app.log.info({
-        type: "injury_calculated",
-        defenderId: defender.id,
-        hit,
-        severity,
-        recoveryUntil: recoveryUntil?.toISOString() ?? null
-      });
-
-      app.log.info({
-        type: "combat_result",
-        hit,
-        damage,
-        severity,
-        attackerId: attacker.id,
-        defenderId: defender.id
       });
 
       await emitCombatResult({
@@ -266,13 +262,8 @@ export async function combatRoutes(app: FastifyInstance) {
         death: died
       });
 
-      await emitStateUpdate({
-        characterId: attacker.id
-      });
-
-      await emitStateUpdate({
-        characterId: defender.id
-      });
+      await emitStateUpdate({ characterId: attacker.id });
+      await emitStateUpdate({ characterId: defender.id });
 
       return {
         hit,
@@ -286,7 +277,6 @@ export async function combatRoutes(app: FastifyInstance) {
         critical,
         death: died
       };
-
     }
   );
 }

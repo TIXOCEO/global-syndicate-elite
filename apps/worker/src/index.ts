@@ -32,7 +32,6 @@ const WS_FACTORY_EVENT =
 /*
 Energy regeneration
 */
-
 async function energyRegenTick() {
   const now = new Date();
   const energies = await prisma.energy.findMany();
@@ -66,7 +65,6 @@ async function energyRegenTick() {
 /*
 Jail countdown
 */
-
 async function jailTick() {
   const now = new Date();
 
@@ -94,7 +92,6 @@ async function jailTick() {
     });
 
     /*
-    NEW FEATURE
     Passive jail XP while incarcerated
     */
 
@@ -129,7 +126,6 @@ async function jailTick() {
 Lead decay system
 1 lead every 3 hours
 */
-
 async function leadDecayTick() {
   const characters = await prisma.character.findMany({
     where: { lead: { gt: 0 } }
@@ -164,7 +160,6 @@ Factory bullet production
 Runs every 60 seconds
 Supports fractional production
 */
-
 async function factoryProductionTick() {
   const factories = await prisma.bulletFactory.findMany({
     include: {
@@ -191,6 +186,7 @@ async function factoryProductionTick() {
           productionProgress: progress
         }
       });
+
       continue;
     }
 
@@ -234,6 +230,7 @@ async function factoryProductionTick() {
       });
 
       return updatedCharacter;
+
     });
 
     console.log(
@@ -271,11 +268,9 @@ async function factoryProductionTick() {
 
 /*
 Recovery cleanup
-- clears invalid recovery states
-- ends valid recovery when timer expires
 */
-
 async function recoveryStatusTick() {
+
   const now = new Date();
 
   const recoveringCharacters = await prisma.character.findMany({
@@ -296,28 +291,13 @@ async function recoveryStatusTick() {
     if (!character.recoveryUntil) continue;
 
     if (character.injurySeverity <= 0) {
+
       await prisma.character.update({
         where: { id: character.id },
         data: {
           recoveryUntil: null
         }
       });
-
-      console.log(
-        `Invalid recovery cleared: ${character.nickname} (${character.id})`
-      );
-
-      try {
-        await fetch(WS_BRIDGE_URL, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            characterId: character.id
-          })
-        });
-      } catch (err) {
-        console.error("WS invalid recovery cleanup failed", err);
-      }
 
       continue;
     }
@@ -338,10 +318,6 @@ async function recoveryStatusTick() {
       }
     });
 
-    console.log(
-      `Recovery completed: ${character.nickname} (${character.id})`
-    );
-
     try {
       await fetch(WS_BRIDGE_URL, {
         method: "POST",
@@ -358,12 +334,9 @@ async function recoveryStatusTick() {
 
 /*
 Passive HP regeneration
-Canon:
-1 HP every 6 minutes
-Paused during recovery
 */
-
 async function passiveHpRegenTick() {
+
   const damagedCharacters = await prisma.character.findMany({
     where: {
       hp: { lt: 1000 },
@@ -403,28 +376,66 @@ async function passiveHpRegenTick() {
   }
 }
 
+/*
+NEW — Intel expiration cleanup
+*/
+async function intelExpiryTick() {
+
+  const now = new Date();
+
+  const result = await prisma.knownLocation.deleteMany({
+    where: {
+      expiresAt: {
+        lt: now
+      }
+    }
+  });
+
+  if (result.count > 0) {
+    console.log(`Expired intel cleaned: ${result.count}`);
+  }
+
+}
+
 async function start() {
 
   await prisma.$connect();
 
   setInterval(async () => {
+
     await energyRegenTick();
     await jailTick();
     await factoryProductionTick();
     await recoveryStatusTick();
+
   }, 60_000);
 
   setInterval(async () => {
+
     await passiveHpRegenTick();
+
   }, 6 * 60 * 1000);
 
   setInterval(async () => {
+
     await leadDecayTick();
+
   }, 3 * 60 * 60 * 1000);
 
+  /*
+  Intel cleanup every 5 minutes
+  */
+
+  setInterval(async () => {
+
+    await intelExpiryTick();
+
+  }, 5 * 60 * 1000);
+
   console.log(
-    "Worker active (energy + jail + lead + factories + recovery)"
+    "Worker active (energy + jail + lead + factories + recovery + intel cleanup)"
   );
+
 }
 
 start();
@@ -432,6 +443,7 @@ start();
 const server = http.createServer((req, res) => {
 
   if (req.url === "/health/worker") {
+
     res.writeHead(200, {
       "content-type": "application/json"
     });
@@ -444,14 +456,18 @@ const server = http.createServer((req, res) => {
     );
 
     return;
+
   }
 
   res.writeHead(404);
   res.end();
+
 });
 
 const port = Number(process.env.PORT ?? 5003);
 
 server.listen(port, "0.0.0.0", () => {
+
   console.log(`Worker running on port ${port}`);
+
 });

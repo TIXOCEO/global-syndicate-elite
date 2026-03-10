@@ -70,7 +70,6 @@ async function jailTick() {
             }
         });
         /*
-        NEW FEATURE
         Passive jail XP while incarcerated
         */
         try {
@@ -211,8 +210,6 @@ async function factoryProductionTick() {
 }
 /*
 Recovery cleanup
-- clears invalid recovery states
-- ends valid recovery when timer expires
 */
 async function recoveryStatusTick() {
     const now = new Date();
@@ -238,19 +235,6 @@ async function recoveryStatusTick() {
                     recoveryUntil: null
                 }
             });
-            console.log(`Invalid recovery cleared: ${character.nickname} (${character.id})`);
-            try {
-                await fetch(WS_BRIDGE_URL, {
-                    method: "POST",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({
-                        characterId: character.id
-                    })
-                });
-            }
-            catch (err) {
-                console.error("WS invalid recovery cleanup failed", err);
-            }
             continue;
         }
         const recoveryEnded = character.recoveryUntil.getTime() <= now.getTime();
@@ -265,7 +249,6 @@ async function recoveryStatusTick() {
                 recoveryUntil: null
             }
         });
-        console.log(`Recovery completed: ${character.nickname} (${character.id})`);
         try {
             await fetch(WS_BRIDGE_URL, {
                 method: "POST",
@@ -282,9 +265,6 @@ async function recoveryStatusTick() {
 }
 /*
 Passive HP regeneration
-Canon:
-1 HP every 6 minutes
-Paused during recovery
 */
 async function passiveHpRegenTick() {
     const damagedCharacters = await prisma.character.findMany({
@@ -322,6 +302,22 @@ async function passiveHpRegenTick() {
         }
     }
 }
+/*
+NEW — Intel expiration cleanup
+*/
+async function intelExpiryTick() {
+    const now = new Date();
+    const result = await prisma.knownLocation.deleteMany({
+        where: {
+            expiresAt: {
+                lt: now
+            }
+        }
+    });
+    if (result.count > 0) {
+        console.log(`Expired intel cleaned: ${result.count}`);
+    }
+}
 async function start() {
     await prisma.$connect();
     setInterval(async () => {
@@ -336,7 +332,13 @@ async function start() {
     setInterval(async () => {
         await leadDecayTick();
     }, 3 * 60 * 60 * 1000);
-    console.log("Worker active (energy + jail + lead + factories + recovery)");
+    /*
+    Intel cleanup every 5 minutes
+    */
+    setInterval(async () => {
+        await intelExpiryTick();
+    }, 5 * 60 * 1000);
+    console.log("Worker active (energy + jail + lead + factories + recovery + intel cleanup)");
 }
 start();
 const server = http_1.default.createServer((req, res) => {
