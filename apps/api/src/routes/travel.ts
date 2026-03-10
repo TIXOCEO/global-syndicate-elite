@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { emitTravelCompleted, emitStateUpdate } from "../lib/wsEmitter";
+import { AircraftDefinitions } from "../game/aircraftDefinitions";
 
 const BASE_TRAVEL_COOLDOWN_MINUTES = 90;
 
@@ -19,7 +20,8 @@ export async function travelRoutes(app: FastifyInstance) {
           status: { in: ["ACTIVE", "CRITICAL"] }
         },
         include: {
-          jail: true
+          jail: true,
+          aircraft: true
         }
       });
 
@@ -30,7 +32,6 @@ export async function travelRoutes(app: FastifyInstance) {
       /*
       Jail validation
       */
-
       if ((character.jail?.jailRemainingSeconds ?? 0) > 0) {
         return reply.code(403).send({ error: "Cannot travel while jailed" });
       }
@@ -38,7 +39,6 @@ export async function travelRoutes(app: FastifyInstance) {
       /*
       Cooldown validation
       */
-
       if (
         character.travelCooldownUntil &&
         character.travelCooldownUntil.getTime() > Date.now()
@@ -49,7 +49,6 @@ export async function travelRoutes(app: FastifyInstance) {
       /*
       Destination validation
       */
-
       if (destinationCountryId === character.currentCountryId) {
         return reply.code(400).send({ error: "Already in that country" });
       }
@@ -63,17 +62,25 @@ export async function travelRoutes(app: FastifyInstance) {
       }
 
       /*
-      Travel cooldown
+      Aircraft reduction
       */
+      const tier =
+        (character.aircraft?.aircraftTier ?? 1) as keyof typeof AircraftDefinitions;
+
+      const aircraft = AircraftDefinitions[tier];
+
+      const reduction = aircraft?.cooldownReduction ?? 0;
+
+      const cooldownMinutes =
+        BASE_TRAVEL_COOLDOWN_MINUTES * (1 - reduction);
 
       const cooldownUntil = new Date(
-        Date.now() + BASE_TRAVEL_COOLDOWN_MINUTES * 60 * 1000
+        Date.now() + cooldownMinutes * 60 * 1000
       );
 
       /*
       Update location
       */
-
       await app.prisma.character.update({
         where: { id: character.id },
         data: {
@@ -85,7 +92,6 @@ export async function travelRoutes(app: FastifyInstance) {
       /*
       Realtime events
       */
-
       await emitTravelCompleted({
         characterId: character.id,
         countryId: destinationCountryId

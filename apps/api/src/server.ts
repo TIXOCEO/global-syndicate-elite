@@ -5,7 +5,6 @@ import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import prismaPlugin from "./plugins/prisma";
 import authPlugin from "./plugins/auth";
-
 import { authRoutes } from "./routes/auth";
 import { accountRoutes } from "./routes/account";
 import { characterRoutes } from "./routes/character";
@@ -30,6 +29,7 @@ import { hitlistRoutes } from "./routes/hitlist";
 /* Sprint 10 */
 import { worldRoutes } from "./routes/world";
 import { travelRoutes } from "./routes/travel";
+import { aircraftRoutes } from "./routes/aircraft";
 
 const app = Fastify({
   logger: true
@@ -49,32 +49,50 @@ async function bootstrap() {
   });
 
   await app.register(prismaPlugin);
+
   await app.register(authPlugin);
 
   await app.register(authRoutes,{ prefix:"/auth" });
 
   await app.register(accountRoutes);
+
   await app.register(characterRoutes);
+
   await app.register(stateRoutes);
+
   await app.register(resourceRoutes);
+
   await app.register(crimeRoutes);
+
   await app.register(factoryRoutes);
+
   await app.register(combatRoutes);
+
   await app.register(playerRoutes);
+
   await app.register(hospitalRoutes);
+
   await app.register(shopRoutes);
+
   await app.register(jailRoutes);
 
   /* Sprint 8 */
+
   await app.register(detectiveRoutes);
+
   await app.register(investigationRoutes);
 
   /* Sprint 9 */
+
   await app.register(hitlistRoutes);
 
   /* Sprint 10 */
+
   await app.register(worldRoutes);
+
   await app.register(travelRoutes);
+
+  await app.register(aircraftRoutes);
 
   await app.register(adminRoutes);
 

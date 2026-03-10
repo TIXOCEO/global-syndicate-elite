@@ -19,7 +19,8 @@ export async function stateRoutes(app: FastifyInstance) {
           energy: true,
           skills: true,
           jail: true,
-          cooldown: true
+          cooldown: true,
+          aircraft: true
         }
       });
 
@@ -32,6 +33,7 @@ export async function stateRoutes(app: FastifyInstance) {
       if (character.cooldown) {
 
         const lastUsed = new Date(character.cooldown.lastUsedAt).getTime();
+
         const lastCrimeType = character.cooldown.crimeType;
 
         const lastDef =
@@ -47,6 +49,7 @@ export async function stateRoutes(app: FastifyInstance) {
           );
 
         }
+
       }
 
       const recoveryRemaining =
@@ -95,6 +98,10 @@ export async function stateRoutes(app: FastifyInstance) {
           investigation: character.skills?.investigation ?? 0,
           jailXp: character.skills?.jailXp ?? 0,
           bustSkillXP: character.skills?.bustSkillXP ?? 0
+        },
+
+        aircraft: {
+          tier: character.aircraft?.aircraftTier ?? 1
         },
 
         jail: {
