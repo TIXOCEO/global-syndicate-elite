@@ -71,28 +71,22 @@ model Character {
   bullets             Int             @default(0)
   injurySeverity      Float           @default(0)
   status              CharacterStatus @default(ACTIVE)
-
   currentCountryId    String          @default("GLOBAL")
-
   createdAt           DateTime        @default(now())
   diedAt              DateTime?
   lastCrimeAt         DateTime?
   protectionUntil     DateTime?
   recoveryUntil       DateTime?
   medkitCooldownUntil DateTime?
-
   skills              Skills?
   energy              Energy?
   jail                JailState?
   cooldown            CrimeCooldown?
-
   crimeLogs           CrimeLog[]
   factories           BulletFactory[]
   items               CharacterItem[]
-
   combatLogsAttacker  CombatLog[]     @relation("CombatAttacker")
   combatLogsDefender  CombatLog[]     @relation("CombatDefender")
-
   knownLocationsViewed KnownLocation[] @relation("IntelViewer")
   knownLocationsTarget KnownLocation[] @relation("IntelTarget")
 
@@ -127,7 +121,6 @@ model DetectiveCooldown {
   cooldownUntil      DateTime
 
   @@unique([viewerCharacterId, targetCharacterId], name: "viewer_target_unique")
-
   @@index([viewerCharacterId])
   @@index([targetCharacterId])
 }
@@ -204,7 +197,6 @@ model CombatLog {
   attacker      Character @relation("CombatAttacker", fields: [attackerId], references: [id])
   defenderId    String
   defender      Character @relation("CombatDefender", fields: [defenderId], references: [id])
-
   bulletsUsed   Int
   hit           Boolean
   damage        Float
@@ -216,8 +208,9 @@ model CombatLog {
   NEW — Hitlist contract link
   */
   hitlistContractId String?
+  hitlistContract   HitlistContract? @relation(fields: [hitlistContractId], references: [id])
 
-  createdAt     DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([attackerId])
   @@index([defenderId])
@@ -225,23 +218,22 @@ model CombatLog {
 
 model HitlistContract {
   id                   String        @id @default(uuid())
-
   creatorCharacterId   String
   creator              Character     @relation("HitlistCreator", fields: [creatorCharacterId], references: [id])
-
   targetCharacterId    String
   target               Character     @relation("HitlistTarget", fields: [targetCharacterId], references: [id])
-
   rewardCash           Int
   minBulletsRequired   Int
-
   deadline             DateTime
   isAnonymous          Boolean       @default(false)
-
   status               HitlistStatus @default(ACTIVE)
-
   createdAt            DateTime      @default(now())
   completedAt          DateTime?
+
+  /*
+  REQUIRED — reverse relation for CombatLog
+  */
+  combatLogs           CombatLog[]
 
   @@index([targetCharacterId])
   @@index([status])
