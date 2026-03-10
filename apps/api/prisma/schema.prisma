@@ -62,7 +62,6 @@ model Character {
   injurySeverity      Float           @default(0)
   status              CharacterStatus @default(ACTIVE)
 
-  /* NEW — SPRINT 8 LOCATION SYSTEM */
   currentCountryId    String          @default("GLOBAL")
 
   createdAt           DateTime        @default(now())
@@ -84,7 +83,6 @@ model Character {
   combatLogsAttacker  CombatLog[]     @relation("CombatAttacker")
   combatLogsDefender  CombatLog[]     @relation("CombatDefender")
 
-  /* Intel relations */
   knownLocationsViewed KnownLocation[] @relation("IntelViewer")
   knownLocationsTarget KnownLocation[] @relation("IntelTarget")
 
@@ -115,7 +113,8 @@ model DetectiveCooldown {
   targetCharacterId  String
   cooldownUntil      DateTime
 
-  @@unique([viewerCharacterId, targetCharacterId])
+  @@unique([viewerCharacterId, targetCharacterId], name: "viewer_target_unique")
+
   @@index([viewerCharacterId])
   @@index([targetCharacterId])
 }

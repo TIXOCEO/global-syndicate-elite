@@ -1,22 +1,30 @@
 import { FastifyInstance } from "fastify";
 import { emitIntelDiscovered } from "../lib/wsEmitter";
 
-export async function detectiveRoutes(app: FastifyInstance) {
+function clamp(v: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, v));
+}
 
+export async function detectiveRoutes(app: FastifyInstance) {
   app.post(
     "/detectives/search",
     { preHandler: app.authenticate },
     async (req: any, reply) => {
-
       const { targetCharacterId } = req.body;
       const accountId = req.user.accountId;
+
+      if (!targetCharacterId) {
+        return reply.code(400).send({ error: "Missing targetCharacterId" });
+      }
 
       const viewer = await app.prisma.character.findFirst({
         where: {
           accountId,
           status: { in: ["ACTIVE", "CRITICAL"] }
         },
-        include: { skills: true }
+        include: {
+          skills: true
+        }
       });
 
       if (!viewer) {
@@ -24,7 +32,7 @@ export async function detectiveRoutes(app: FastifyInstance) {
       }
 
       if (viewer.id === targetCharacterId) {
-        return reply.code(400).send({ error: "Cannot search yourself" });
+        return reply.code(400).send({ error: "Cannot investigate yourself" });
       }
 
       const target = await app.prisma.character.findUnique({
@@ -35,10 +43,6 @@ export async function detectiveRoutes(app: FastifyInstance) {
         return reply.code(404).send({ error: "Target not found" });
       }
 
-      /*
-      Cooldown validation
-      */
-
       const cooldown = await app.prisma.detectiveCooldown.findFirst({
         where: {
           viewerCharacterId: viewer.id,
@@ -46,79 +50,52 @@ export async function detectiveRoutes(app: FastifyInstance) {
         }
       });
 
-      if (cooldown && cooldown.cooldownUntil > new Date()) {
+      if (cooldown && cooldown.cooldownUntil.getTime() > Date.now()) {
         return reply.code(429).send({
           error: "Detective cooldown active"
         });
       }
 
-      /*
-      Cost calculation
-      */
-
-      const severityBracket =
-        Math.floor((target.injurySeverity ?? 0) / 20);
+      const severityBracket = Math.floor((target.injurySeverity ?? 0) / 20);
 
       const cost =
         800 +
-        12 * target.notoriety +
+        12 * (target.notoriety ?? 0) +
         25 * severityBracket;
 
       if (viewer.cash < cost) {
-        return reply.code(400).send({
-          error: "Insufficient cash"
-        });
+        return reply.code(400).send({ error: "Not enough cash" });
       }
-
-      /*
-      Investigation probability
-      */
 
       const IS = viewer.skills?.investigation ?? 0;
 
-      const CS = Math.max(
+      const CS = clamp(
+        10 +
+          0 +
+          0 +
+          0 -
+          Math.floor((target.notoriety ?? 0) / 80),
         0,
-        Math.min(
-          60,
-          10 - Math.floor(target.notoriety / 80)
-        )
+        60
       );
 
-      const pIdentify = Math.max(
+      const P_identify = clamp(
+        0.12 + 0.006 * IS - 0.003 * CS,
         0.05,
-        Math.min(
-          0.85,
-          (0.12 + 0.006 * IS) - (0.003 * CS)
-        )
+        0.85
       );
 
-      const success = Math.random() < pIdentify;
+      const success = Math.random() < P_identify;
 
-      const expiresAt = new Date(
-        Date.now() + 6 * 60 * 60 * 1000
+      const P_false = clamp(
+        0.10 - 0.0008 * IS + 0.0012 * CS,
+        0.02,
+        0.18
       );
 
-      let discoveredCountry = target.currentCountryId;
-      let falseIntel = false;
-
-      if (!success) {
-
-        const pFalse = Math.max(
-          0.02,
-          Math.min(
-            0.18,
-            0.10 - 0.0008 * IS + 0.0012 * CS
-          )
-        );
-
-        if (Math.random() < pFalse) {
-          falseIntel = true;
-          discoveredCountry = "UNKNOWN";
-        }
-      }
+      const falseIntel = !success && Math.random() < P_false;
 
       await app.prisma.$transaction(async (tx) => {
-
         await tx.character.update({
           where: { id: viewer.id },
           data: {
@@ -128,36 +105,20 @@ export async function detectiveRoutes(app: FastifyInstance) {
 
         await tx.detectiveCooldown.upsert({
           where: {
-            viewerCharacterId_targetCharacterId: {
+            viewer_target_unique: {
               viewerCharacterId: viewer.id,
               targetCharacterId
             }
           },
           update: {
-            cooldownUntil:
-              new Date(Date.now() + 30 * 60 * 1000)
+            cooldownUntil: new Date(Date.now() + 30 * 60 * 1000)
           },
           create: {
             viewerCharacterId: viewer.id,
             targetCharacterId,
-            cooldownUntil:
-              new Date(Date.now() + 30 * 60 * 1000)
+            cooldownUntil: new Date(Date.now() + 30 * 60 * 1000)
           }
         });
-
-        if (success || falseIntel) {
-
-          await tx.knownLocation.create({
-            data: {
-              viewerCharacterId: viewer.id,
-              targetCharacterId,
-              countryId: discoveredCountry,
-              expiresAt,
-              isFalseIntel: falseIntel
-            }
-          });
-
-        }
 
         await tx.skills.update({
           where: { characterId: viewer.id },
@@ -168,27 +129,57 @@ export async function detectiveRoutes(app: FastifyInstance) {
           }
         });
 
+        if (success || falseIntel) {
+          const expires =
+            success
+              ? new Date(Date.now() + 6 * 60 * 60 * 1000)
+              : new Date(Date.now() + 60 * 60 * 1000);
+
+          const country = success
+            ? target.currentCountryId
+            : "UNKNOWN";
+
+          await tx.knownLocation.create({
+            data: {
+              viewerCharacterId: viewer.id,
+              targetCharacterId,
+              countryId: country,
+              expiresAt: expires,
+              isFalseIntel: falseIntel
+            }
+          });
+
+          if (success) {
+            await emitIntelDiscovered({
+              viewerCharacterId: viewer.id,
+              targetCharacterId,
+              countryId: country,
+              expiresAt: expires.getTime()
+            });
+          }
+        }
       });
 
       if (success) {
+        return {
+          success: true,
+          countryId: target.currentCountryId,
+          expiresIn: 6 * 60 * 60
+        };
+      }
 
-        await emitIntelDiscovered({
-          viewerCharacterId: viewer.id,
-          targetCharacterId,
-          countryId: discoveredCountry,
-          expiresAt: expiresAt.getTime()
-        });
-
+      if (falseIntel) {
+        return {
+          success: false,
+          falseIntel: true,
+          message: "False lead discovered"
+        };
       }
 
       return {
-        success,
-        countryId: success ? discoveredCountry : null,
-        falseIntel,
-        expiresAt: expiresAt.getTime()
+        success: false,
+        message: "Detective search failed"
       };
-
     }
   );
-
 }
