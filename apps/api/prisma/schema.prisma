@@ -34,6 +34,16 @@ enum ItemType {
   MEDKIT_I
 }
 
+/*
+NEW — Sprint 9 Hitlist contract status
+*/
+enum HitlistStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
 model Account {
   id              String        @id @default(uuid())
   email           String        @unique
@@ -86,18 +96,21 @@ model Character {
   knownLocationsViewed KnownLocation[] @relation("IntelViewer")
   knownLocationsTarget KnownLocation[] @relation("IntelTarget")
 
+  /*
+  NEW — Hitlist relations
+  */
+  hitlistsCreated HitlistContract[] @relation("HitlistCreator")
+  hitlistsTarget  HitlistContract[] @relation("HitlistTarget")
+
   @@index([accountId])
 }
 
 model KnownLocation {
   id                 String   @id @default(uuid())
-
   viewerCharacterId  String
   viewer             Character @relation("IntelViewer", fields: [viewerCharacterId], references: [id])
-
   targetCharacterId  String
   target             Character @relation("IntelTarget", fields: [targetCharacterId], references: [id])
-
   countryId          String
   discoveredAt       DateTime @default(now())
   expiresAt          DateTime
@@ -191,16 +204,48 @@ model CombatLog {
   attacker      Character @relation("CombatAttacker", fields: [attackerId], references: [id])
   defenderId    String
   defender      Character @relation("CombatDefender", fields: [defenderId], references: [id])
+
   bulletsUsed   Int
   hit           Boolean
   damage        Float
   shootXp       Int
   rxp           Int
   notorietyGain Int
+
+  /*
+  NEW — Hitlist contract link
+  */
+  hitlistContractId String?
+
   createdAt     DateTime @default(now())
 
   @@index([attackerId])
   @@index([defenderId])
+}
+
+model HitlistContract {
+  id                   String        @id @default(uuid())
+
+  creatorCharacterId   String
+  creator              Character     @relation("HitlistCreator", fields: [creatorCharacterId], references: [id])
+
+  targetCharacterId    String
+  target               Character     @relation("HitlistTarget", fields: [targetCharacterId], references: [id])
+
+  rewardCash           Int
+  minBulletsRequired   Int
+
+  deadline             DateTime
+  isAnonymous          Boolean       @default(false)
+
+  status               HitlistStatus @default(ACTIVE)
+
+  createdAt            DateTime      @default(now())
+  completedAt          DateTime?
+
+  @@index([targetCharacterId])
+  @@index([status])
+  @@index([deadline])
 }
 
 model CrimeCooldown {

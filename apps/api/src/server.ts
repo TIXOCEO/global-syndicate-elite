@@ -21,13 +21,17 @@ import { hospitalRoutes } from "./routes/hospital";
 import { shopRoutes } from "./routes/shop";
 import { jailRoutes } from "./routes/jail";
 
-/* NEW */
+/* Sprint 8 */
 import { detectiveRoutes } from "./routes/detectives";
 import { investigationRoutes } from "./routes/investigation";
+
+/* Sprint 9 */
+import { hitlistRoutes } from "./routes/hitlist";
 
 const app = Fastify({ logger: true });
 
 async function bootstrap() {
+
   await app.register(cors, {
     origin: true,
     credentials: true
@@ -51,15 +55,18 @@ async function bootstrap() {
   await app.register(crimeRoutes);
   await app.register(factoryRoutes);
   await app.register(combatRoutes);
+
   await app.register(playerRoutes);
   await app.register(hospitalRoutes);
   await app.register(shopRoutes);
-
   await app.register(jailRoutes);
 
   /* Sprint 8 */
   await app.register(detectiveRoutes);
   await app.register(investigationRoutes);
+
+  /* Sprint 9 */
+  await app.register(hitlistRoutes);
 
   await app.register(adminRoutes);
 

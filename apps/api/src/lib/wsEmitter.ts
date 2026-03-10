@@ -12,6 +12,9 @@ export type CombatResultPayload = {
 
 const WS_URL = process.env.WS_INTERNAL_URL || "http://127.0.0.1:5002";
 
+/*
+STATE UPDATE
+*/
 export async function emitStateUpdate(payload: any) {
   try {
     await fetch(`${WS_URL}/internal/state-update`, {
@@ -24,6 +27,9 @@ export async function emitStateUpdate(payload: any) {
   }
 }
 
+/*
+CRIME RESULT
+*/
 export async function emitCrimeResult(payload: any) {
   try {
     await fetch(`${WS_URL}/internal/crime-result`, {
@@ -36,7 +42,10 @@ export async function emitCrimeResult(payload: any) {
   }
 }
 
-export async function emitCombatResult(payload: any) {
+/*
+COMBAT RESULT
+*/
+export async function emitCombatResult(payload: CombatResultPayload) {
   try {
     await fetch(`${WS_URL}/internal/combat-result`, {
       method: "POST",
@@ -48,6 +57,9 @@ export async function emitCombatResult(payload: any) {
   }
 }
 
+/*
+JAIL EVENTS
+*/
 export async function emitJailEvent(payload: any) {
   try {
     await fetch(`${WS_URL}/internal/jail-event`, {
@@ -60,6 +72,9 @@ export async function emitJailEvent(payload: any) {
   }
 }
 
+/*
+INTEL DISCOVERED
+*/
 export async function emitIntelDiscovered(payload: any) {
   try {
     await fetch(`${WS_URL}/internal/intel-discovered`, {
@@ -73,7 +88,7 @@ export async function emitIntelDiscovered(payload: any) {
 }
 
 /*
-NEW — Sprint 8C Investigation Result
+INVESTIGATION RESULT
 */
 export async function emitInvestigationResult(payload: any) {
   try {
@@ -84,5 +99,56 @@ export async function emitInvestigationResult(payload: any) {
     });
   } catch (err) {
     console.error("WS investigation emit failed", err);
+  }
+}
+
+/*
+SPRINT 9 — HITLIST EVENTS
+*/
+export async function emitHitlistCreated(payload: any) {
+  try {
+    await fetch(`${WS_URL}/internal/hitlist-created`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error("WS hitlist created emit failed", err);
+  }
+}
+
+export async function emitHitlistCancelled(payload: any) {
+  try {
+    await fetch(`${WS_URL}/internal/hitlist-cancelled`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error("WS hitlist cancelled emit failed", err);
+  }
+}
+
+export async function emitHitlistCompleted(payload: any) {
+  try {
+    await fetch(`${WS_URL}/internal/hitlist-completed`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error("WS hitlist completed emit failed", err);
+  }
+}
+
+export async function emitHitlistExpired(payload: any) {
+  try {
+    await fetch(`${WS_URL}/internal/hitlist-expired`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error("WS hitlist expired emit failed", err);
   }
 }
