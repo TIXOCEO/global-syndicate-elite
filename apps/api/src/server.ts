@@ -3,8 +3,10 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
+
 import prismaPlugin from "./plugins/prisma";
 import authPlugin from "./plugins/auth";
+
 import { authRoutes } from "./routes/auth";
 import { accountRoutes } from "./routes/account";
 import { characterRoutes } from "./routes/character";
@@ -30,6 +32,10 @@ import { hitlistRoutes } from "./routes/hitlist";
 import { worldRoutes } from "./routes/world";
 import { travelRoutes } from "./routes/travel";
 import { aircraftRoutes } from "./routes/aircraft";
+import { territoryRoutes } from "./routes/territory";
+
+/* Territory Seeder */
+import { seedTerritories } from "./game/territoryGridSeeder";
 
 const app = Fastify({
   logger: true
@@ -52,34 +58,28 @@ async function bootstrap() {
 
   await app.register(authPlugin);
 
+  /*
+  AUTO SEED TERRITORIES
+  */
+
+  await seedTerritories(app.prisma);
+
   await app.register(authRoutes,{ prefix:"/auth" });
-
   await app.register(accountRoutes);
-
   await app.register(characterRoutes);
-
   await app.register(stateRoutes);
-
   await app.register(resourceRoutes);
-
   await app.register(crimeRoutes);
-
   await app.register(factoryRoutes);
-
   await app.register(combatRoutes);
-
   await app.register(playerRoutes);
-
   await app.register(hospitalRoutes);
-
   await app.register(shopRoutes);
-
   await app.register(jailRoutes);
 
   /* Sprint 8 */
 
   await app.register(detectiveRoutes);
-
   await app.register(investigationRoutes);
 
   /* Sprint 9 */
@@ -89,10 +89,9 @@ async function bootstrap() {
   /* Sprint 10 */
 
   await app.register(worldRoutes);
-
   await app.register(travelRoutes);
-
   await app.register(aircraftRoutes);
+  await app.register(territoryRoutes);
 
   await app.register(adminRoutes);
 

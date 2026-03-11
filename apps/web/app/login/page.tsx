@@ -1,18 +1,15 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const router = useRouter();
 
   async function login() {
-
     try {
-
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -23,40 +20,53 @@ export default function LoginPage() {
 
       if (data?.access) {
 
+        // store token in localStorage (existing behavior)
         localStorage.setItem("token", data.access);
 
-        router.replace("/dashboard");
+        // NEW: store token in cookie for middleware access
+        document.cookie = `token=${data.access}; path=/`;
+
+        // check if character exists
+        try {
+          const sync = await fetch("/api/state/sync", {
+            headers: {
+              Authorization: `Bearer ${data.access}`
+            }
+          });
+
+          if (sync.status === 404) {
+            router.replace("/create-character");
+            return;
+          }
+
+          router.replace("/dashboard");
+
+        } catch {
+          router.replace("/dashboard");
+        }
 
       } else {
-
         alert("Login failed");
-
       }
 
     } catch (err) {
-
       console.error("Login failed", err);
       alert("Login failed");
-
     }
-
   }
 
   return (
-
     <div className="min-h-screen bg-[#0B1220] text-white flex items-center justify-center px-6">
 
       <div className="w-full max-w-sm">
 
         {/* LOGO */}
         <div className="flex justify-center mb-6">
-
           <img
             src="/icons/icon-192.png"
             alt="GSE"
             className="w-20 h-20"
           />
-
         </div>
 
         {/* TITLE */}
@@ -93,7 +103,5 @@ export default function LoginPage() {
       </div>
 
     </div>
-
   );
-
 }

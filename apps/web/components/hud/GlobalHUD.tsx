@@ -5,15 +5,18 @@ import { useCharacterStore } from "@/stores/characterStore";
 import { apiFetch } from "@/lib/apiClient";
 import { socket } from "@/lib/socket";
 import { useEffect, useState } from "react";
-
-import { Columns3, Mail } from "lucide-react";
+import { Columns3, Mail, PlaneTakeoff } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function GlobalHUD() {
+
+  const router = useRouter();
 
   const { cash, lead, bullets, energy, pulse, setResources } = useResourceStore();
   const { hp, setCharacter } = useCharacterStore();
 
   const [prisonerCount, setPrisonerCount] = useState(0);
+  const [travelRemaining, setTravelRemaining] = useState(0);
 
   const hpPercent = Math.max(0, Math.min(100, hp / 10));
   const energyPercent = Math.max(0, Math.min(100, energy));
@@ -25,6 +28,7 @@ export default function GlobalHUD() {
   }
 
   async function hydrateHUD() {
+
     try {
 
       const sync = await apiFetch("/api/state/sync");
@@ -45,21 +49,29 @@ export default function GlobalHUD() {
         energy: sync.resources.energy
       });
 
+      setTravelRemaining(sync.travel?.remaining ?? 0);
+
     } catch (e) {
+
       console.error("HUD hydration failed", e);
+
     }
+
   }
 
   async function checkJailActivity() {
+
     try {
 
       const res = await apiFetch("/api/jail/count");
-
       setPrisonerCount(res.prisoners ?? 0);
 
     } catch (e) {
+
       console.error("Jail count fetch failed", e);
+
     }
+
   }
 
   useEffect(() => {
@@ -95,6 +107,7 @@ export default function GlobalHUD() {
   }, []);
 
   const jailActive = prisonerCount > 0;
+  const travelReady = travelRemaining <= 0;
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50">
@@ -115,9 +128,20 @@ export default function GlobalHUD() {
                 GSE
               </div>
 
+              <PlaneTakeoff
+                size={16}
+                onClick={() => router.push("/airport")}
+                className={`cursor-pointer transition ${
+                  travelReady
+                    ? "text-[#C6A756] drop-shadow-[0_0_6px_rgba(198,167,86,0.8)]"
+                    : "text-[#C6A756] opacity-40"
+                }`}
+              />
+
               <Columns3
                 size={16}
-                className={`transition ${
+                onClick={() => router.push("/jail")}
+                className={`cursor-pointer transition ${
                   jailActive
                     ? "text-[#C6A756] animate-pulse drop-shadow-[0_0_6px_rgba(198,167,86,0.8)]"
                     : "text-zinc-600"

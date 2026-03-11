@@ -48,6 +48,7 @@ model Country {
   borderSecurity Float      @default(1)
   createdAt      DateTime   @default(now())
   characters     Character[]
+  territories    TerritoryCell[]
 
   @@index([code])
 }
@@ -96,11 +97,16 @@ model Character {
   energy              Energy?
   jail                JailState?
   cooldown            CrimeCooldown?
+
   crimeLogs           CrimeLog[]
   factories           BulletFactory[]
   items               CharacterItem[]
-
   aircraft            CharacterAircraft?
+
+  /*
+  Territory ownership (Sprint 10D)
+  */
+  territoriesOwned    TerritoryCell[]
 
   combatLogsAttacker  CombatLog[]     @relation("CombatAttacker")
   combatLogsDefender  CombatLog[]     @relation("CombatDefender")
@@ -118,9 +124,28 @@ model Character {
 model CharacterAircraft {
   characterId  String   @id
   character    Character @relation(fields: [characterId], references: [id])
-
   aircraftTier Int
   createdAt    DateTime @default(now())
+}
+
+model TerritoryCell {
+  id          String   @id @default(uuid())
+
+  countryId   String
+  country     Country  @relation(fields: [countryId], references: [id])
+
+  gridX       Int
+  gridY       Int
+
+  ownerCharacterId String?
+  ownerCharacter   Character? @relation(fields: [ownerCharacterId], references: [id])
+
+  controlPoints Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@unique([countryId, gridX, gridY])
+  @@index([countryId])
 }
 
 model KnownLocation {
