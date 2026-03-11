@@ -8,7 +8,6 @@ const path_1 = __importDefault(require("path"));
 dotenv_1.default.config({
     path: path_1.default.resolve(__dirname, "../../../.env")
 });
-const http_1 = __importDefault(require("http"));
 const client_1 = require("@prisma/client");
 const adapter_pg_1 = require("@prisma/adapter-pg");
 const pg_1 = require("pg");
@@ -69,9 +68,6 @@ async function jailTick() {
                 lastUpdatedAt: now
             }
         });
-        /*
-        Passive jail XP while incarcerated
-        */
         try {
             await prisma.skills.update({
                 where: { characterId: entry.characterId },
@@ -131,14 +127,10 @@ async function leadDecayTick() {
 }
 /*
 Factory bullet production
-Runs every 60 seconds
-Supports fractional production
 */
 async function factoryProductionTick() {
     const factories = await prisma.bulletFactory.findMany({
-        include: {
-            character: true
-        }
+        include: { character: true }
     });
     for (const factory of factories) {
         const character = factory.character;
@@ -158,7 +150,6 @@ async function factoryProductionTick() {
         const maxByCash = Math.floor(character.cash / 2);
         const allowedProduction = Math.min(bulletsProduced, maxByLead, maxByCash);
         if (allowedProduction <= 0) {
-            console.log(`Factory paused for ${character.nickname} (insufficient resources)`);
             continue;
         }
         const cashCost = allowedProduction * 2;
@@ -180,7 +171,6 @@ async function factoryProductionTick() {
             });
             return updatedCharacter;
         });
-        console.log(`Factory production: ${character.nickname} +${allowedProduction} bullets`);
         try {
             await fetch(WS_BRIDGE_URL, {
                 method: "POST",
@@ -197,9 +187,7 @@ async function factoryProductionTick() {
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({
                     characterId: character.id,
-                    bulletsAdded: allowedProduction,
-                    leadConsumed: allowedProduction,
-                    cashConsumed: cashCost
+                    bulletsAdded: allowedProduction
                 })
             });
         }
@@ -209,17 +197,54 @@ async function factoryProductionTick() {
     }
 }
 /*
+NEW — Territory income worker
+*/
+async function territoryIncomeTick() {
+    try {
+        const grouped = await prisma.territoryCell.groupBy({
+            by: ["ownerCharacterId"],
+            where: {
+                ownerCharacterId: { not: null }
+            },
+            _count: {
+                ownerCharacterId: true
+            }
+        });
+        for (const entry of grouped) {
+            const characterId = entry.ownerCharacterId;
+            if (!characterId)
+                continue;
+            const territories = entry._count.ownerCharacterId;
+            const income = territories * 120;
+            await prisma.character.update({
+                where: { id: characterId },
+                data: {
+                    cash: { increment: income }
+                }
+            });
+            await fetch(WS_BRIDGE_URL, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                    characterId
+                })
+            });
+        }
+        console.log("Territory income distributed");
+    }
+    catch (err) {
+        console.error("Territory income worker failed", err);
+    }
+}
+/*
 Recovery cleanup
 */
 async function recoveryStatusTick() {
     const now = new Date();
     const recoveringCharacters = await prisma.character.findMany({
-        where: {
-            recoveryUntil: { not: null }
-        },
+        where: { recoveryUntil: { not: null } },
         select: {
             id: true,
-            nickname: true,
             hp: true,
             injurySeverity: true,
             recoveryUntil: true
@@ -228,39 +253,16 @@ async function recoveryStatusTick() {
     for (const character of recoveringCharacters) {
         if (!character.recoveryUntil)
             continue;
-        if (character.injurySeverity <= 0) {
-            await prisma.character.update({
-                where: { id: character.id },
-                data: {
-                    recoveryUntil: null
-                }
-            });
+        if (character.recoveryUntil.getTime() > now.getTime())
             continue;
-        }
-        const recoveryEnded = character.recoveryUntil.getTime() <= now.getTime();
-        if (!recoveryEnded)
-            continue;
-        const healedHp = Math.max(character.hp, 650);
         await prisma.character.update({
             where: { id: character.id },
             data: {
-                hp: healedHp,
+                hp: Math.max(character.hp, 650),
                 injurySeverity: 0,
                 recoveryUntil: null
             }
         });
-        try {
-            await fetch(WS_BRIDGE_URL, {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({
-                    characterId: character.id
-                })
-            });
-        }
-        catch (err) {
-            console.error("WS recovery update failed", err);
-        }
     }
 }
 /*
@@ -310,9 +312,7 @@ async function intelExpiryTick() {
         const now = new Date();
         const result = await prisma.knownLocation.deleteMany({
             where: {
-                expiresAt: {
-                    lt: now
-                }
+                expiresAt: { lt: now }
             }
         });
         if (result.count > 0) {
@@ -324,7 +324,7 @@ async function intelExpiryTick() {
     }
 }
 /*
-NEW — Hitlist contract expiration
+Hitlist contract expiration
 */
 async function hitlistExpiryTick() {
     try {
@@ -332,18 +332,14 @@ async function hitlistExpiryTick() {
         const expiredContracts = await prisma.hitlistContract.findMany({
             where: {
                 status: "ACTIVE",
-                deadline: {
-                    lt: now
-                }
+                deadline: { lt: now }
             }
         });
         for (const contract of expiredContracts) {
             await prisma.$transaction(async (tx) => {
                 await tx.hitlistContract.update({
                     where: { id: contract.id },
-                    data: {
-                        status: "EXPIRED"
-                    }
+                    data: { status: "EXPIRED" }
                 });
                 await tx.character.update({
                     where: { id: contract.creatorCharacterId },
@@ -359,6 +355,9 @@ async function hitlistExpiryTick() {
         console.error("Hitlist expiry cleanup failed", err);
     }
 }
+/*
+START WORKERS
+*/
 async function start() {
     await prisma.$connect();
     setInterval(async () => {
@@ -366,43 +365,15 @@ async function start() {
         await jailTick();
         await factoryProductionTick();
         await recoveryStatusTick();
-    }, 60_000);
-    setInterval(async () => {
-        await passiveHpRegenTick();
-    }, 6 * 60 * 1000);
-    setInterval(async () => {
-        await leadDecayTick();
-    }, 3 * 60 * 60 * 1000);
+    }, 60000);
+    setInterval(passiveHpRegenTick, 6 * 60 * 1000);
+    setInterval(leadDecayTick, 3 * 60 * 60 * 1000);
+    setInterval(intelExpiryTick, 5 * 60 * 1000);
+    setInterval(hitlistExpiryTick, 5 * 60 * 1000);
     /*
-    Intel cleanup every 5 minutes
+    NEW — Territory income
     */
-    setInterval(async () => {
-        await intelExpiryTick();
-    }, 5 * 60 * 1000);
-    /*
-    NEW — Hitlist cleanup every 5 minutes
-    */
-    setInterval(async () => {
-        await hitlistExpiryTick();
-    }, 5 * 60 * 1000);
-    console.log("Worker active (energy + jail + lead + factories + recovery + intel cleanup + hitlist expiry)");
+    setInterval(territoryIncomeTick, 60 * 60 * 1000);
+    console.log("Worker active (energy + jail + factories + recovery + intel + hitlist + territory income)");
 }
 start();
-const server = http_1.default.createServer((req, res) => {
-    if (req.url === "/health/worker") {
-        res.writeHead(200, {
-            "content-type": "application/json"
-        });
-        res.end(JSON.stringify({
-            status: "ok",
-            service: "worker"
-        }));
-        return;
-    }
-    res.writeHead(404);
-    res.end();
-});
-const port = Number(process.env.PORT ?? 5003);
-server.listen(port, "0.0.0.0", () => {
-    console.log(`Worker running on port ${port}`);
-});
