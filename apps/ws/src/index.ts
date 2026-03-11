@@ -83,3 +83,10 @@ app.listen({
 }).then(() => {
   console.log(`WS server running on ${port}`);
 });
+
+/*
+Sprint 10E — Territory capture
+*/
+app.post("/internal/territory-captured", async (req: FastifyRequest) => {
+  return { ok: true };
+});

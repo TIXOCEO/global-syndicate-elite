@@ -167,3 +167,18 @@ export async function emitTravelCompleted(payload: any) {
     console.error("WS travel emit failed", err);
   }
 }
+
+/*
+SPRINT 10E — TERRITORY CAPTURE
+*/
+export async function emitTerritoryCaptured(payload: any) {
+  try {
+    await fetch(`${WS_URL}/internal/territory-captured`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error("WS territory capture emit failed", err);
+  }
+}

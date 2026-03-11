@@ -1,5 +1,4 @@
 import { FastifyInstance } from "fastify";
-
 import {
   computeDamage,
   computeHitChance,
@@ -7,12 +6,10 @@ import {
   computeRXP,
   computeNotoriety
 } from "../game/combatEngine";
-
 import {
   calculateSeverity,
   calculateRecoveryHours
 } from "../game/injuryEngine";
-
 import {
   emitCombatResult,
   emitStateUpdate,
@@ -26,18 +23,15 @@ function computeRecoveryCombatMult(severity: number) {
 }
 
 export async function combatRoutes(app: FastifyInstance) {
-
   app.post(
     "/combat/attack",
     { preHandler: app.authenticate },
     async (req: any, reply) => {
 
       const { targetCharacterId, bullets } = req.body;
-
       const accountId = req.user.accountId;
 
       const now = Date.now();
-
       const last = combatRateLimit.get(accountId);
 
       if (last && now - last < 1000) {
@@ -193,13 +187,11 @@ export async function combatRoutes(app: FastifyInstance) {
       let recoveryUntil: Date | null = null;
 
       if (hit) {
-
         const recoveryHours =
           critical ? 24 : calculateRecoveryHours(severity);
 
         recoveryUntil =
           new Date(Date.now() + recoveryHours * 60 * 60 * 1000);
-
       }
 
       const shootXp = computeShootXP(bullets, hit);
@@ -213,7 +205,6 @@ export async function combatRoutes(app: FastifyInstance) {
       let bountyContract: any = null;
 
       if (hit) {
-
         bountyContract = await app.prisma.hitlistContract.findFirst({
           where: {
             targetCharacterId: defender.id,
@@ -225,7 +216,6 @@ export async function combatRoutes(app: FastifyInstance) {
             rewardCash: "desc"
           }
         });
-
       }
 
       await app.prisma.$transaction(async (tx: any) => {
@@ -285,6 +275,77 @@ export async function combatRoutes(app: FastifyInstance) {
         });
 
         /*
+        SPRINT 10E — TERRITORY CAPTURE
+        */
+
+        if (hit) {
+
+          const territory = await tx.territoryCell.findFirst({
+            where: {
+              countryId: attacker.currentCountryId,
+              ownerCharacterId: defender.id
+            }
+          });
+
+          if (territory) {
+
+            const recent = await tx.territoryCombatLog.findFirst({
+              where: {
+                attackerId: attacker.id,
+                defenderId: defender.id,
+                territoryCellId: territory.id,
+                createdAt: {
+                  gt: new Date(Date.now() - 6 * 60 * 60 * 1000)
+                }
+              }
+            });
+
+            if (!recent) {
+
+              const cpGain = Math.max(
+                1,
+                Math.min(
+                  4,
+                  1 + Math.floor(Math.log(1 + bullets / 800))
+                )
+              );
+
+              const newCP = territory.controlPoints + cpGain;
+
+              await tx.territoryCell.update({
+                where: { id: territory.id },
+                data: {
+                  controlPoints: newCP
+                }
+              });
+
+              await tx.territoryCombatLog.create({
+                data: {
+                  attackerId: attacker.id,
+                  defenderId: defender.id,
+                  territoryCellId: territory.id
+                }
+              });
+
+              if (newCP >= 12) {
+
+                await tx.territoryCell.update({
+                  where: { id: territory.id },
+                  data: {
+                    ownerCharacterId: attacker.id,
+                    controlPoints: 0
+                  }
+                });
+
+              }
+
+            }
+
+          }
+
+        }
+
+        /*
         Bounty reward payout
         */
 
@@ -320,13 +381,11 @@ export async function combatRoutes(app: FastifyInstance) {
       });
 
       if (bountyContract) {
-
         await emitHitlistCompleted({
           contractId: bountyContract.id,
           hunterId: attacker.id,
           targetId: defender.id
         });
-
       }
 
       await emitCombatResult({
@@ -361,5 +420,4 @@ export async function combatRoutes(app: FastifyInstance) {
 
     }
   );
-
 }

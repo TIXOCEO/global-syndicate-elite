@@ -148,6 +148,18 @@ model TerritoryCell {
   @@index([countryId])
 }
 
+model TerritoryCombatLog {
+  id              String   @id @default(uuid())
+  attackerId      String
+  defenderId      String
+  territoryCellId String
+  createdAt       DateTime @default(now())
+
+  @@index([attackerId])
+  @@index([defenderId])
+  @@index([territoryCellId])
+}
+
 model KnownLocation {
   id                 String    @id @default(uuid())
   viewerCharacterId  String
