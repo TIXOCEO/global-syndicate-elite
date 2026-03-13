@@ -3,7 +3,8 @@ export function generateReferralCode(): string {
   let code = "";
 
   for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    const randomIndex = Math.floor(Math.random() * chars.length);
+    code += chars[randomIndex];
   }
 
   return code;

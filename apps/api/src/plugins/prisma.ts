@@ -17,7 +17,10 @@ export default fp(async (app) => {
   const adapter = new PrismaPg(pool);
 
   const prisma = new PrismaClient({
-    adapter
+    adapter,
+    log: process.env.NODE_ENV === "development"
+      ? ["query", "info", "warn", "error"]
+      : ["error"]
   });
 
   await prisma.$connect();
