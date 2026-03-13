@@ -4,6 +4,7 @@ import { signAccess, signRefresh } from "../lib/jwt";
 import { generateReferralCode } from "../lib/referral";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import { OAuth2Client } from "google-auth-library";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -15,8 +16,11 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 export async function authRoutes(app: FastifyInstance) {
 
+  // REGISTER
   app.post("/register", async (req: any, reply) => {
 
     const { email, password, referralCode } = req.body;
@@ -81,6 +85,70 @@ export async function authRoutes(app: FastifyInstance) {
 
   });
 
+
+  // GOOGLE LOGIN
+  app.post("/google", async (req: any, reply) => {
+
+    const { idToken } = req.body;
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload?.email) {
+      return reply.code(400).send({ error: "Google account email missing" });
+    }
+
+    const email = payload.email;
+    const googleId = payload.sub;
+
+    let account = await app.prisma.account.findUnique({
+      where: { email }
+    });
+
+    if (!account) {
+
+      account = await app.prisma.account.create({
+        data: {
+          email,
+          passwordHash: "",
+          referralCode: generateReferralCode(),
+          isEmailVerified: true,
+          googleId
+        }
+      });
+
+    } else {
+
+      if (!account.googleId) {
+        await app.prisma.account.update({
+          where: { id: account.id },
+          data: { googleId }
+        });
+      }
+
+    }
+
+    const access = signAccess({ accountId: account.id });
+    const refresh = signRefresh({ accountId: account.id });
+
+    reply.setCookie("gse_session", access, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7
+    });
+
+    return { access, refresh };
+
+  });
+
+
+  // VERIFY EMAIL
   app.get("/verify-email", async (req: any, reply) => {
 
     const { token } = req.query;
@@ -110,6 +178,8 @@ export async function authRoutes(app: FastifyInstance) {
 
   });
 
+
+  // LOGIN
   app.post("/login", async (req: any, reply) => {
 
     const { email, password } = req.body;
@@ -151,75 +221,8 @@ export async function authRoutes(app: FastifyInstance) {
 
   });
 
-  app.post("/forgot-password", async (req: any) => {
 
-    const { email } = req.body;
-
-    const account = await app.prisma.account.findUnique({
-      where: { email }
-    });
-
-    if (!account) {
-      return { success: true };
-    }
-
-    const token = crypto.randomBytes(32).toString("hex");
-
-    await app.prisma.passwordResetToken.create({
-      data: {
-        accountId: account.id,
-        token,
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000)
-      }
-    });
-
-    const resetUrl = `${process.env.APP_URL}/auth/reset-password?token=${token}`;
-
-    await transporter.sendMail({
-      to: email,
-      subject: "Reset your GSE password",
-      html: `
-        <h2>Password reset</h2>
-        <p>Click the link below to reset your password.</p>
-        <a href="${resetUrl}">${resetUrl}</a>
-      `
-    });
-
-    return { success: true };
-
-  });
-
-  app.post("/reset-password", async (req: any, reply) => {
-
-    const { token, password } = req.body;
-
-    const record = await app.prisma.passwordResetToken.findUnique({
-      where: { token }
-    });
-
-    if (!record) {
-      return reply.code(400).send({ error: "Invalid token" });
-    }
-
-    if (record.expiresAt < new Date()) {
-      return reply.code(400).send({ error: "Token expired" });
-    }
-
-    const passwordHash = await hashPassword(password);
-
-    await app.prisma.account.update({
-      where: { id: record.accountId },
-      data: { passwordHash }
-    });
-
-    await app.prisma.passwordResetToken.delete({
-      where: { id: record.id }
-    });
-
-    return { success: true };
-
-  });
-
+  // ME
   app.get("/me", { preHandler: [app.authenticate] }, async (req: any) => {
 
     const account = await app.prisma.account.findUnique({
@@ -238,6 +241,8 @@ export async function authRoutes(app: FastifyInstance) {
 
   });
 
+
+  // LOGOUT
   app.post("/logout", async (req, reply) => {
 
     reply.clearCookie("gse_session", { path: "/" });
