@@ -2,10 +2,23 @@ import { FastifyInstance } from "fastify";
 import { hashPassword, verifyPassword } from "../lib/hash";
 import { signAccess, signRefresh } from "../lib/jwt";
 import { generateReferralCode } from "../lib/referral";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT) || 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
 
 export async function authRoutes(app: FastifyInstance) {
 
   app.post("/register", async (req: any, reply) => {
+
     const { email, password, referralCode } = req.body;
 
     const existing = await app.prisma.account.findUnique({
@@ -42,24 +55,63 @@ export async function authRoutes(app: FastifyInstance) {
       }
     });
 
-    const access = signAccess({ accountId: account.id });
-    const refresh = signRefresh({ accountId: account.id });
+    const token = crypto.randomBytes(32).toString("hex");
 
-    reply.setCookie("gse_session", access, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7
+    await app.prisma.emailVerificationToken.create({
+      data: {
+        accountId: account.id,
+        token,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      }
     });
 
-    return {
-      access,
-      refresh
-    };
+    const verifyUrl = `${process.env.APP_URL}/auth/verify-email?token=${token}`;
+
+    await transporter.sendMail({
+      to: email,
+      subject: "Verify Your Global Syndicate Elite Account",
+      html: `
+        <h2>Verify your account</h2>
+        <p>Click the link below to verify your email.</p>
+        <a href="${verifyUrl}">${verifyUrl}</a>
+      `
+    });
+
+    return { success: true };
+
+  });
+
+  app.get("/verify-email", async (req: any, reply) => {
+
+    const { token } = req.query;
+
+    const record = await app.prisma.emailVerificationToken.findUnique({
+      where: { token }
+    });
+
+    if (!record) {
+      return reply.code(400).send({ error: "Invalid token" });
+    }
+
+    if (record.expiresAt < new Date()) {
+      return reply.code(400).send({ error: "Token expired" });
+    }
+
+    await app.prisma.account.update({
+      where: { id: record.accountId },
+      data: { isEmailVerified: true }
+    });
+
+    await app.prisma.emailVerificationToken.delete({
+      where: { id: record.id }
+    });
+
+    return { success: true };
+
   });
 
   app.post("/login", async (req: any, reply) => {
+
     const { email, password } = req.body;
 
     const account = await app.prisma.account.findUnique({
@@ -81,9 +133,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     if (!account.isEmailVerified) {
-      return reply.code(403).send({
-        error: "Email not verified"
-      });
+      return reply.code(403).send({ error: "Email not verified" });
     }
 
     const access = signAccess({ accountId: account.id });
@@ -97,10 +147,77 @@ export async function authRoutes(app: FastifyInstance) {
       maxAge: 60 * 60 * 24 * 7
     });
 
-    return {
-      access,
-      refresh
-    };
+    return { access, refresh };
+
+  });
+
+  app.post("/forgot-password", async (req: any) => {
+
+    const { email } = req.body;
+
+    const account = await app.prisma.account.findUnique({
+      where: { email }
+    });
+
+    if (!account) {
+      return { success: true };
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+
+    await app.prisma.passwordResetToken.create({
+      data: {
+        accountId: account.id,
+        token,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      }
+    });
+
+    const resetUrl = `${process.env.APP_URL}/auth/reset-password?token=${token}`;
+
+    await transporter.sendMail({
+      to: email,
+      subject: "Reset your GSE password",
+      html: `
+        <h2>Password reset</h2>
+        <p>Click the link below to reset your password.</p>
+        <a href="${resetUrl}">${resetUrl}</a>
+      `
+    });
+
+    return { success: true };
+
+  });
+
+  app.post("/reset-password", async (req: any, reply) => {
+
+    const { token, password } = req.body;
+
+    const record = await app.prisma.passwordResetToken.findUnique({
+      where: { token }
+    });
+
+    if (!record) {
+      return reply.code(400).send({ error: "Invalid token" });
+    }
+
+    if (record.expiresAt < new Date()) {
+      return reply.code(400).send({ error: "Token expired" });
+    }
+
+    const passwordHash = await hashPassword(password);
+
+    await app.prisma.account.update({
+      where: { id: record.accountId },
+      data: { passwordHash }
+    });
+
+    await app.prisma.passwordResetToken.delete({
+      where: { id: record.id }
+    });
+
+    return { success: true };
+
   });
 
   app.get("/me", { preHandler: [app.authenticate] }, async (req: any) => {
@@ -118,14 +235,15 @@ export async function authRoutes(app: FastifyInstance) {
     });
 
     return { account };
+
   });
 
   app.post("/logout", async (req, reply) => {
 
-    reply.clearCookie("gse_session", {
-      path: "/"
-    });
+    reply.clearCookie("gse_session", { path: "/" });
 
     return { success: true };
+
   });
+
 }
