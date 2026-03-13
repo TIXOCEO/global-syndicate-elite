@@ -37,14 +37,26 @@ export async function authRoutes(app: FastifyInstance) {
         email,
         passwordHash,
         referralCode: generateReferralCode(),
-        referredByCode
+        referredByCode,
+        isEmailVerified: false
       }
     });
 
     const access = signAccess({ accountId: account.id });
     const refresh = signRefresh({ accountId: account.id });
 
-    return { access, refresh };
+    reply.setCookie("gse_session", access, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7
+    });
+
+    return {
+      access,
+      refresh
+    };
   });
 
   app.post("/login", async (req: any, reply) => {
@@ -68,9 +80,52 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(403).send({ error: "Account banned" });
     }
 
+    if (!account.isEmailVerified) {
+      return reply.code(403).send({
+        error: "Email not verified"
+      });
+    }
+
     const access = signAccess({ accountId: account.id });
     const refresh = signRefresh({ accountId: account.id });
 
-    return { access, refresh };
+    reply.setCookie("gse_session", access, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7
+    });
+
+    return {
+      access,
+      refresh
+    };
+  });
+
+  app.get("/me", { preHandler: [app.authenticate] }, async (req: any) => {
+
+    const account = await app.prisma.account.findUnique({
+      where: { id: req.user.accountId },
+      select: {
+        id: true,
+        email: true,
+        referralCode: true,
+        eliteCredits: true,
+        status: true,
+        createdAt: true
+      }
+    });
+
+    return { account };
+  });
+
+  app.post("/logout", async (req, reply) => {
+
+    reply.clearCookie("gse_session", {
+      path: "/"
+    });
+
+    return { success: true };
   });
 }

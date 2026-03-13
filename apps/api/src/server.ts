@@ -43,15 +43,15 @@ const app = Fastify({
 
 async function bootstrap() {
 
-  await app.register(cors,{
-    origin:true,
-    credentials:true
+  await app.register(cors, {
+    origin: true,
+    credentials: true
   });
 
   await app.register(cookie);
 
-  await app.register(jwt,{
-    secret:process.env.JWT_ACCESS_SECRET!
+  await app.register(jwt, {
+    secret: process.env.JWT_ACCESS_SECRET!
   });
 
   await app.register(prismaPlugin);
@@ -64,7 +64,8 @@ async function bootstrap() {
 
   await seedTerritories(app.prisma);
 
-  await app.register(authRoutes,{ prefix:"/auth" });
+  await app.register(authRoutes, { prefix: "/auth" });
+
   await app.register(accountRoutes);
   await app.register(characterRoutes);
   await app.register(stateRoutes);
@@ -78,16 +79,13 @@ async function bootstrap() {
   await app.register(jailRoutes);
 
   /* Sprint 8 */
-
   await app.register(detectiveRoutes);
   await app.register(investigationRoutes);
 
   /* Sprint 9 */
-
   await app.register(hitlistRoutes);
 
   /* Sprint 10 */
-
   await app.register(worldRoutes);
   await app.register(travelRoutes);
   await app.register(aircraftRoutes);
@@ -95,19 +93,18 @@ async function bootstrap() {
 
   await app.register(adminRoutes);
 
-  app.get("/health",async()=>({
-    status:"ok"
+  app.get("/health", async () => ({
+    status: "ok"
   }));
 
   const port = Number(process.env.PORT) || 5001;
 
   await app.listen({
     port,
-    host:"0.0.0.0"
+    host: "0.0.0.0"
   });
 
   app.log.info(`GSE API running on port ${port}`);
-
 }
 
 bootstrap();
