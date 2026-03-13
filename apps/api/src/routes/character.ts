@@ -5,8 +5,12 @@ export async function characterRoutes(app: FastifyInstance) {
   // CREATE CHARACTER
   app.post("/character/create", { preHandler: app.authenticate }, async (req: any, reply) => {
 
-    const { nickname } = req.body;
+    const { nickname, gender, avatar } = req.body;
     const accountId = req.user.accountId;
+
+    if (!nickname || nickname.length < 3 || nickname.length > 20) {
+      return reply.code(400).send({ error: "Nickname must be 3-20 characters" });
+    }
 
     const existingActive = await app.prisma.character.findFirst({
       where: { accountId, status: "ACTIVE" }
@@ -27,7 +31,6 @@ export async function characterRoutes(app: FastifyInstance) {
     /*
     Sprint 10A — Random country spawn
     */
-
     const spawnCountries = ["NL","CO","JP","US","MX"];
 
     const randomIndex =
@@ -39,6 +42,13 @@ export async function characterRoutes(app: FastifyInstance) {
       data: {
         accountId,
         nickname,
+        tier: 1,
+        rxp: 0,
+        hp: 1000,
+        notoriety: 0,
+        cash: 500,
+        lead: 0,
+        bullets: 0,
         currentCountryId: spawnCountryId,
         skills: { create: {} },
         energy: { create: {} },
@@ -50,7 +60,13 @@ export async function characterRoutes(app: FastifyInstance) {
       }
     });
 
-    return character;
+    return {
+      ...character,
+      onboarding: {
+        gender,
+        avatar
+      }
+    };
 
   });
 
@@ -98,6 +114,7 @@ export async function characterRoutes(app: FastifyInstance) {
   app.post("/character/select", { preHandler: app.authenticate }, async (req: any, reply) => {
 
     const { characterId } = req.body;
+
     const accountId = req.user.accountId;
 
     const character = await app.prisma.character.findFirst({
